@@ -2,6 +2,7 @@
 // Browser print (Ctrl/Cmd+P) → "Save as PDF" is the export path.
 
 import * as storage from '../storage.js';
+import * as M from '../models.js';
 import { esc, md, referencesHtml, notFound } from '../util.js';
 
 const unanswered = '<span class="muted">— nicht beantwortet —</span>';
@@ -13,8 +14,10 @@ export function render(container, params) {
   if (!km) { container.innerHTML = '<p>Das zugehörige Wissensmodell wurde nicht gefunden.</p>'; return; }
 
   const replies = project.replies;
+  const selectedTagIds = project.selectedTagIds || [];
 
   function renderAnswer(q, path) {
+    if (!M.isVisibleByTags(q, selectedTagIds)) return '';
     const r = replies[path];
     let out = `<div class="doc-q"><div class="doc-question">${esc(q.title)}${q.required ? ' <span class="req">*</span>' : ''}</div>`;
 
@@ -60,12 +63,15 @@ export function render(container, params) {
     <article class="document">
       <h1>${esc(project.name)}</h1>
       <p class="muted">Erstellt aus Wissensmodell: ${esc(km.title)}</p>
-      ${km.chapters.map((ch) => `
-        <section>
+      ${km.chapters.map((ch) => {
+        const qHtml = ch.questions.map((q) => renderAnswer(q, q.id)).join('');
+        if (!qHtml.trim()) return '';
+        return `<section>
           <h2>${esc(ch.title)}</h2>
           ${ch.text ? `<p>${md(ch.text)}</p>` : ''}
-          ${ch.questions.map((q) => renderAnswer(q, q.id)).join('')}
-        </section>`).join('')}
+          ${qHtml}
+        </section>`;
+      }).join('')}
     </article>
   `;
 

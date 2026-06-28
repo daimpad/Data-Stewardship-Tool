@@ -40,12 +40,19 @@ export function newReference() {
   return { label: '', url: '' };
 }
 
+export const TAG_COLORS = ['#2a6fdb', '#d9534f', '#2e7d32', '#b8860b', '#6f42c1', '#0d9488'];
+
+export function newTag(index = 0) {
+  return { id: uid('tag'), name: 'Neuer Tag', color: TAG_COLORS[index % TAG_COLORS.length] };
+}
+
 export function newProject(kmId, name) {
   return {
     id: uid('prj'),
     kmId,
     name: name || 'Neues Projekt',
     createdAt: new Date().toISOString(),
+    selectedTagIds: [],
     replies: {},
   };
 }
@@ -65,6 +72,7 @@ export function applyTypeDefaults(q, type) {
   const next = { id: q.id, type, title: q.title, text: q.text };
   if (q.required) next.required = true; // type-independent, preserve across type changes
   if (q.references) next.references = q.references;
+  if (q.tagIds) next.tagIds = q.tagIds;
   if (type === 'value') {
     next.valueType = q.valueType || 'string';
     next.validations = q.validations || [];
@@ -197,6 +205,24 @@ export function findMultiChoiceQuestionByChoice(km, choiceId) {
   return found;
 }
 
+// --- Tags ----------------------------------------------------------------
+// Tag-based visibility (DSW semantics): no selection -> everything visible;
+// otherwise a question is visible if it is untagged or shares a selected tag.
+export function isVisibleByTags(q, selectedTagIds) {
+  if (!selectedTagIds || selectedTagIds.length === 0) return true;
+  const tags = q.tagIds || [];
+  if (tags.length === 0) return true;
+  return tags.some((t) => selectedTagIds.includes(t));
+}
+
+// Remove a tag id from the KM's tag list and from every question (used on delete).
+export function removeTag(km, tagId) {
+  km.tags = (km.tags || []).filter((t) => t.id !== tagId);
+  walkQuestionArrays(km, (arr) => arr.forEach((q) => {
+    if (q.tagIds) q.tagIds = q.tagIds.filter((t) => t !== tagId);
+  }));
+}
+
 // Resolve the question object that a reply path points at. Path segments
 // alternate question-id / (answer-id | item-id) / question-id / ...
 export function questionAtPath(km, path) {
@@ -236,7 +262,8 @@ export function move(arr, id, dir) {
 // Also tracks required questions: requiredTotal and requiredOpen (visible
 // required questions that are not yet satisfactorily answered).
 // The list container itself is structural and not counted in total/answered.
-export function countProgress(km, replies) {
+// Questions hidden by the project's tag selection are excluded (selectedTagIds).
+export function countProgress(km, replies, selectedTagIds) {
   let total = 0;
   let answered = 0;
   let requiredTotal = 0;
@@ -250,6 +277,7 @@ export function countProgress(km, replies) {
   };
 
   const visit = (q, path) => {
+    if (!isVisibleByTags(q, selectedTagIds)) return;
     const r = replies[path];
     if (q.type === 'value') {
       total++;

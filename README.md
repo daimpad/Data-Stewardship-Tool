@@ -68,6 +68,9 @@ Browser und behält dabei die konzeptuelle Struktur bei.
   Repositorien) und **Markdown-Hilfetexte**; im Fragebogen und im Dokument als
   Links dargestellt. Markdown wird sicher gerendert (Escaping zuerst, nur
   erlaubte Link-Schemata).
+- **Tags & Zuschnitt** — Fragen mit Tags versehen (im Editor) und pro Projekt
+  Tags auswählen, um den Fragebogen zuzuschneiden: ohne Auswahl alle Fragen,
+  mit Auswahl nur passend getaggte (ungetaggte bleiben immer sichtbar) — wie im DSW.
 - **Beispiel-Wissensmodell** wird beim ersten Start automatisch geladen.
 
 ## Schnellstart
@@ -164,6 +167,10 @@ markiert und zählen nicht als beantwortet.
 Jede Frage kann **Referenzen** (`references: [{ label, url }]`, Hilfe-Links) tragen;
 Hilfetexte, Hinweise und Kapitelbeschreibungen werden als sicheres Markdown
 (fett, kursiv, Code, Links) gerendert.
+
+**Tags** leben am Wissensmodell (`tags: [{ id, name, color }]`); Fragen verweisen
+über `tagIds` darauf, ein Projekt wählt über `selectedTagIds` aus. Im Fragebogen,
+Dokument und in der Fortschrittszählung werden ausgeblendete Fragen übersprungen.
 
 ## Routing
 

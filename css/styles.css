@@ -142,6 +142,17 @@ textarea { width: 100%; min-height: 3rem; resize: vertical; }
 .ed-reference { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.3rem; }
 .ed-reference input { flex: 1; }
 
+/* Tags -------------------------------------------------------------------- */
+.km-tags { margin: 0 0 1.2rem; padding: 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.tag-edit-list { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.4rem 0; }
+.tag-edit { display: inline-flex; align-items: center; gap: 0.3rem; }
+.tag-edit input[type="color"] { width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: none; cursor: pointer; }
+.tag-chip { display: inline-block; font: inherit; font-size: 0.8rem; cursor: pointer; border: 1px solid var(--tag, var(--border)); color: var(--tag, var(--text)); background: var(--surface); border-radius: 999px; padding: 0.1rem 0.65rem; }
+.tag-chip.on { background: var(--tag, var(--primary)); color: #fff; }
+.q-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.3rem 0; }
+.tag-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-bottom: 1rem; }
+.tag-filter:empty { display: none; }
+
 /* Questionnaire ----------------------------------------------------------- */
 .progress { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.2rem; }
 .progress .bar { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }

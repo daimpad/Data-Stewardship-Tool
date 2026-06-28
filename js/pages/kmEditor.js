@@ -15,6 +15,10 @@ const TYPE_LABELS = {
   list: 'Liste',
 };
 
+// Set at the start of viewKM so the (module-level) question renderers can show
+// the KM's tag chips without threading tags through every function signature.
+let currentTags = [];
+
 export function render(container, params) {
   const km = storage.getKM(params.id);
   if (!km) { container.innerHTML = notFound('Wissensmodell'); return; }
@@ -54,6 +58,9 @@ export function render(container, params) {
       const q = M.findQuestion(km, e.target.dataset.qid);
       const i = Number(e.target.dataset.idx);
       if (q && q.references && q.references[i]) q.references[i][f === 'r-label' ? 'label' : 'url'] = v;
+    } else if (f === 'tag-name' || f === 'tag-color') {
+      const t = (km.tags || []).find((x) => x.id === id);
+      if (t) t[f === 'tag-name' ? 'name' : 'color'] = v;
     } else return;
     save();
   });
@@ -135,6 +142,18 @@ export function render(container, params) {
       const q = M.findQuestion(km, e.target.dataset.qid);
       const i = Number(e.target.dataset.idx);
       if (q && q.references) q.references.splice(i, 1);
+    } else if (action === 'add-tag') {
+      const i = (km.tags ||= []).length;
+      km.tags.push(M.newTag(i));
+    } else if (action === 'del-tag') {
+      M.removeTag(km, id);
+    } else if (action === 'toggle-tag') {
+      const q = M.findQuestion(km, e.target.dataset.qid);
+      if (q) {
+        const tag = e.target.dataset.tag;
+        const ids = q.tagIds || [];
+        q.tagIds = ids.includes(tag) ? ids.filter((t) => t !== tag) : [...ids, tag];
+      }
     } else {
       return;
     }
@@ -153,14 +172,43 @@ function moveButtons(action, id, idx, total) {
 }
 
 function viewKM(km) {
+  currentTags = km.tags || [];
   return `
     <div class="km-meta">
       <input class="title-input" data-field="km-title" value="${esc(km.title)}" placeholder="Titel des Wissensmodells">
       <textarea data-field="km-desc" placeholder="Beschreibung (optional)">${esc(km.description || '')}</textarea>
     </div>
+    ${viewTags(km)}
     ${km.chapters.map((ch, i) => viewChapter(ch, i, km.chapters.length)).join('')}
     <button type="button" class="btn" data-action="add-chapter">+ Kapitel hinzufügen</button>
   `;
+}
+
+function viewTags(km) {
+  return `
+    <div class="km-tags">
+      <p class="muted small">Tags — zum Zuschneiden von Fragebögen (pro Frage zuweisbar):</p>
+      <div class="tag-edit-list">
+        ${(km.tags || []).map((t) => `
+          <span class="tag-edit">
+            <input type="color" data-field="tag-color" data-id="${esc(t.id)}" value="${esc(t.color)}" title="Farbe">
+            <input data-field="tag-name" data-id="${esc(t.id)}" value="${esc(t.name)}" placeholder="Tag-Name">
+            <button type="button" class="btn-sm danger" data-action="del-tag" data-id="${esc(t.id)}">✕</button>
+          </span>`).join('')}
+      </div>
+      <button type="button" class="btn-sm" data-action="add-tag">+ Tag</button>
+    </div>`;
+}
+
+function viewQuestionTags(q) {
+  if (!currentTags.length) return '';
+  const ids = q.tagIds || [];
+  return `<div class="q-tags">
+    ${currentTags.map((t) => `
+      <button type="button" class="tag-chip ${ids.includes(t.id) ? 'on' : ''}"
+        data-action="toggle-tag" data-qid="${esc(q.id)}" data-tag="${esc(t.id)}"
+        style="--tag:${esc(t.color)}">${esc(t.name)}</button>`).join('')}
+  </div>`;
 }
 
 function viewChapter(ch, idx, total) {
@@ -199,6 +247,7 @@ function viewQuestion(q, idx, total) {
         </span>
       </div>
       <input class="ed-help" data-field="q-text" data-id="${esc(q.id)}" value="${esc(q.text || '')}" placeholder="Hilfetext (optional, Markdown erlaubt)">
+      ${viewQuestionTags(q)}
       ${viewQuestionBody(q)}
       ${viewReferences(q)}
     </div>`;

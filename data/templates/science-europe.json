@@ -3,6 +3,10 @@
   "title": "Science Europe DMP (international)",
   "description": "Datenmanagementplan nach den sechs Kernthemen des Science-Europe-Leitfadens — Basis u. a. für Horizon-Europe-DMPs.",
   "createdAt": "2026-06-28T00:00:00.000Z",
+  "tags": [
+    { "id": "tag_personal", "name": "Personenbezogene Daten", "color": "#d9534f" },
+    { "id": "tag_openaccess", "name": "Open Access", "color": "#2e7d32" }
+  ],
   "chapters": [
     {
       "id": "se_ch1",
@@ -134,6 +138,7 @@
           "title": "Werden personenbezogene Daten verarbeitet?",
           "text": "",
           "required": true,
+          "tagIds": ["tag_personal"],
           "references": [ { "label": "DSGVO (Volltext, EUR-Lex)", "url": "https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32016R0679" } ],
           "answers": [
             { "id": "se_pers_yes", "label": "Ja", "advice": "DSGVO beachten; Einwilligungen und Rechtsgrundlage klären.", "followUps": [
@@ -195,6 +200,7 @@
           "title": "Werden die Daten geteilt bzw. veröffentlicht?",
           "text": "",
           "required": true,
+          "tagIds": ["tag_openaccess"],
           "answers": [
             { "id": "se_share_yes", "label": "Ja", "advice": "", "followUps": [
               { "id": "se_share_repo", "type": "value", "title": "In welchem Repositorium?", "text": "z. B. Zenodo, fachspezifisches Repositorium", "valueType": "string", "references": [ { "label": "re3data – Repositorien finden", "url": "https://www.re3data.org/" }, { "label": "Zenodo", "url": "https://zenodo.org/" } ] }
@@ -212,6 +218,7 @@
           "type": "options",
           "title": "Wird ein persistenter Identifier (z. B. DOI) vergeben?",
           "text": "",
+          "tagIds": ["tag_openaccess"],
           "answers": [
             { "id": "se_pid_yes", "label": "Ja", "advice": "", "followUps": [] },
             { "id": "se_pid_no", "label": "Nein", "advice": "", "followUps": [] }

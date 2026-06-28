@@ -14,6 +14,9 @@ export function render(container, params) {
   const km = storage.getKM(project.kmId);
   if (!km) { container.innerHTML = '<p>Das zugehörige Wissensmodell wurde nicht gefunden.</p>'; return; }
 
+  if (!Array.isArray(project.selectedTagIds)) project.selectedTagIds = [];
+  const tags = km.tags || [];
+
   container.innerHTML = `
     <div class="page-head no-print">
       <a class="back" href="#/projects">← Projekte</a>
@@ -21,18 +24,32 @@ export function render(container, params) {
     </div>
     <h1>${esc(project.name)}</h1>
     <p class="muted">Wissensmodell: ${esc(km.title)}</p>
+    <div id="tag-filter" class="tag-filter no-print"></div>
     <div class="progress" id="progress"></div>
     <form id="q-body" class="questionnaire" autocomplete="off"></form>
   `;
   const body = container.querySelector('#q-body');
   const progressEl = container.querySelector('#progress');
+  const filterEl = container.querySelector('#tag-filter');
 
   const get = (path) => project.replies[path];
   const set = (path, value) => { project.replies[path] = value; storage.saveProject(project); };
   const clear = (path) => { delete project.replies[path]; storage.saveProject(project); };
 
+  function drawFilter() {
+    if (!tags.length) return;
+    const sel = project.selectedTagIds;
+    filterEl.innerHTML = `
+      <span class="muted small">Zuschnitt nach Tags:</span>
+      ${tags.map((t) => `
+        <button type="button" class="tag-chip ${sel.includes(t.id) ? 'on' : ''}"
+          data-tag="${esc(t.id)}" style="--tag:${esc(t.color)}">${esc(t.name)}</button>`).join('')}
+      ${sel.length ? '<button type="button" class="btn-sm secondary" data-clear="1">Alle anzeigen</button>' : ''}
+    `;
+  }
+
   function updateProgress() {
-    const { answered, total, requiredTotal, requiredOpen } = M.countProgress(km, project.replies);
+    const { answered, total, requiredTotal, requiredOpen } = M.countProgress(km, project.replies, project.selectedTagIds);
     const pct = total ? Math.round((answered / total) * 100) : 0;
     let req = '';
     if (requiredTotal > 0) {
@@ -47,17 +64,24 @@ export function render(container, params) {
   }
 
   function draw() {
-    body.innerHTML = km.chapters.map((ch) => `
-      <section class="chapter">
+    const sections = km.chapters.map((ch) => {
+      const qHtml = ch.questions.map((q) => viewQuestion(q, q.id)).join('');
+      if (!qHtml.trim()) return ''; // hide chapters with no visible questions
+      return `<section class="chapter">
         <h2>${esc(ch.title)}</h2>
         ${ch.text ? `<p class="muted">${md(ch.text)}</p>` : ''}
-        ${ch.questions.map((q) => viewQuestion(q, q.id)).join('')}
-      </section>`).join('')
-      || '<p class="muted">Dieses Wissensmodell enthält noch keine Fragen.</p>';
+        ${qHtml}
+      </section>`;
+    }).join('');
+    const hasAny = km.chapters.some((ch) => ch.questions.length);
+    body.innerHTML = sections || (hasAny
+      ? '<p class="muted">Mit der aktuellen Tag-Auswahl sind keine Fragen sichtbar.</p>'
+      : '<p class="muted">Dieses Wissensmodell enthält noch keine Fragen.</p>');
     updateProgress();
   }
 
   function viewQuestion(q, path) {
+    if (!M.isVisibleByTags(q, project.selectedTagIds)) return '';
     const r = get(path);
     let html = `<div class="q">
       <label class="q-title">${esc(q.title)}${q.required ? ' <span class="req" title="Pflichtfrage">*</span>' : ''}</label>
@@ -170,5 +194,22 @@ export function render(container, params) {
     }
   });
 
+  // Tag filter (Zuschnitt): toggle selected tags, persist, re-render.
+  filterEl.addEventListener('click', (e) => {
+    if (e.target.dataset.clear) {
+      project.selectedTagIds = [];
+    } else if (e.target.dataset.tag) {
+      const tag = e.target.dataset.tag;
+      const sel = project.selectedTagIds;
+      project.selectedTagIds = sel.includes(tag) ? sel.filter((t) => t !== tag) : [...sel, tag];
+    } else {
+      return;
+    }
+    storage.saveProject(project);
+    drawFilter();
+    draw();
+  });
+
+  drawFilter();
   draw();
 }
