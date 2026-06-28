@@ -44,6 +44,7 @@ a:hover { text-decoration: underline; }
 
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
 .page-head h1 { margin: 0; font-size: 1.5rem; }
+.head-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .back { color: var(--muted); }
 
 h1, h2, h3 { line-height: 1.25; }

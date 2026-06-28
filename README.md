@@ -54,6 +54,8 @@ Browser und behält dabei die konzeptuelle Struktur bei.
   Listeneinträge erscheinen dynamisch; Live-Fortschrittsanzeige.
 - **Dokument** — die Antworten werden als gegliedertes, druckbares HTML
   ausgegeben (Browser-Druck → „Als PDF speichern").
+- **Import/Export** — Wissensmodelle als JSON exportieren und wieder importieren
+  (zum Teilen oder Sichern; eine Mini-Variante des DSW-Paketgedankens).
 - **Beispiel-Wissensmodell** wird beim ersten Start automatisch geladen.
 
 ## Schnellstart

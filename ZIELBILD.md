@@ -244,7 +244,7 @@ Dadurch lassen sich Folgefragen und Listen-Einträge eindeutig verorten:
 | Knowledge Model (UUID-Graph) | verschachteltes KM-JSON | nur Kapitel/Fragen/Antworten/Folgefragen/Listen |
 | 7 Fragetypen | 4 Typen (`value`, `options`, `multiChoice`, `list`) | Integration/ItemSelect/File entfallen |
 | KM-Editor (event-sourced) | direkter JSON-Editor | keine Versionierung/Events |
-| Package + Registry | — | entfällt komplett |
+| Package + Registry | KM als JSON exportieren/importieren | nur Datei-Austausch, keine zentrale Registry |
 | Project + Replies | Projekt-JSON mit `replies`-Map | gleiche Pfad-Logik, reduziert |
 | Phasen / Metriken / Tags | — | entfallen |
 | Document Template (Jinja) | fest verdrahtetes HTML-Rendering | keine Template-Sprache |
