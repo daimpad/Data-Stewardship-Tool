@@ -7,7 +7,7 @@
     {
       "id": "dfg_ch1",
       "title": "1. Datenbeschreibung",
-      "text": "Art, Umfang und Herkunft der Forschungsdaten.",
+      "text": "Art, Umfang und Herkunft der Forschungsdaten. Weitere Hinweise: [forschungsdaten.org](https://www.forschungsdaten.org/).",
       "questions": [
         {
           "id": "dfg_kind",
@@ -63,6 +63,7 @@
           "title": "Sind Datenschutz- oder Persönlichkeitsrechte betroffen?",
           "text": "",
           "required": true,
+          "references": [ { "label": "DSGVO (Volltext, EUR-Lex)", "url": "https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32016R0679" } ],
           "answers": [
             { "id": "dfg_priv_yes", "label": "Ja", "advice": "DSGVO und ggf. Einwilligungen berücksichtigen.", "followUps": [
               { "id": "dfg_priv_how", "type": "value", "title": "Wie wird damit umgegangen?", "text": "", "valueType": "string" }
@@ -117,6 +118,7 @@
           "title": "Werden die Daten Dritten zur Verfügung gestellt?",
           "text": "",
           "required": true,
+          "references": [ { "label": "re3data – Repositorien finden", "url": "https://www.re3data.org/" } ],
           "answers": [
             { "id": "dfg_avail_yes", "label": "Ja", "advice": "", "followUps": [
               { "id": "dfg_avail_cond", "type": "value", "title": "Über welches Repositorium und unter welchen Bedingungen?", "text": "", "valueType": "string" }

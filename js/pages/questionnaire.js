@@ -4,7 +4,7 @@
 
 import * as storage from '../storage.js';
 import * as M from '../models.js';
-import { esc, notFound } from '../util.js';
+import { esc, md, referencesHtml, notFound } from '../util.js';
 
 const INPUT_TYPE = { string: 'text', number: 'number', date: 'date', email: 'email', url: 'url' };
 
@@ -50,7 +50,7 @@ export function render(container, params) {
     body.innerHTML = km.chapters.map((ch) => `
       <section class="chapter">
         <h2>${esc(ch.title)}</h2>
-        ${ch.text ? `<p class="muted">${esc(ch.text)}</p>` : ''}
+        ${ch.text ? `<p class="muted">${md(ch.text)}</p>` : ''}
         ${ch.questions.map((q) => viewQuestion(q, q.id)).join('')}
       </section>`).join('')
       || '<p class="muted">Dieses Wissensmodell enthält noch keine Fragen.</p>';
@@ -61,7 +61,7 @@ export function render(container, params) {
     const r = get(path);
     let html = `<div class="q">
       <label class="q-title">${esc(q.title)}${q.required ? ' <span class="req" title="Pflichtfrage">*</span>' : ''}</label>
-      ${q.text ? `<p class="q-text muted">${esc(q.text)}</p>` : ''}`;
+      ${q.text ? `<p class="q-text muted">${md(q.text)}</p>` : ''}`;
 
     if (q.type === 'value') {
       const type = INPUT_TYPE[q.valueType] || 'text';
@@ -76,7 +76,7 @@ export function render(container, params) {
             data-kind="answer" data-path="${esc(path)}" ${r?.value === a.id ? 'checked' : ''}>
           ${esc(a.label)}
         </label>
-        ${a.advice && r?.value === a.id ? `<p class="advice">💡 ${esc(a.advice)}</p>` : ''}`).join('');
+        ${a.advice && r?.value === a.id ? `<p class="advice">💡 ${md(a.advice)}</p>` : ''}`).join('');
       if (r?.value) {
         const a = q.answers.find((x) => x.id === r.value);
         if (a && a.followUps.length) {
@@ -110,6 +110,7 @@ export function render(container, params) {
       html += '</div>';
     }
 
+    html += referencesHtml(q.references);
     return `${html}</div>`;
   }
 

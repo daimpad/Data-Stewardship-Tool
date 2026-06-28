@@ -138,6 +138,9 @@ textarea { width: 100%; min-height: 3rem; resize: vertical; }
 .ed-validations { margin-top: 0.5rem; padding-left: 0.6rem; border-left: 2px dashed var(--border); }
 .ed-validation { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.3rem; }
 .ed-validation input { flex: 1; }
+.ed-references { margin-top: 0.5rem; padding-left: 0.6rem; border-left: 2px dashed var(--border); }
+.ed-reference { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.3rem; }
+.ed-reference input { flex: 1; }
 
 /* Questionnaire ----------------------------------------------------------- */
 .progress { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.2rem; }
@@ -157,6 +160,9 @@ textarea { width: 100%; min-height: 3rem; resize: vertical; }
 .req-summary { font-size: 0.9rem; font-weight: 600; }
 .req-summary.open { color: var(--danger); }
 .req-summary.done { color: #2e7d32; }
+.references { list-style: none; padding: 0; margin: 0.35rem 0 0; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; }
+.references li { font-size: 0.85rem; }
+.references a::before { content: "🔗 "; }
 .opt { display: block; margin: 0.2rem 0; cursor: pointer; }
 .opt input { margin-right: 0.4rem; }
 .advice { margin: 0.2rem 0 0.5rem 1.4rem; font-size: 0.9rem; color: var(--primary-dark); background: var(--accent); padding: 0.3rem 0.6rem; border-radius: 6px; }
