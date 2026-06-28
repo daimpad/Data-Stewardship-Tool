@@ -3,7 +3,8 @@
 
 import * as storage from '../storage.js';
 import * as M from '../models.js';
-import { esc, md, referencesHtml, notFound } from '../util.js';
+import { toMaDmp } from '../madmp.js';
+import { esc, md, referencesHtml, slug, downloadJson, notFound } from '../util.js';
 
 const unanswered = '<span class="muted">— nicht beantwortet —</span>';
 
@@ -58,7 +59,10 @@ export function render(container, params) {
   container.innerHTML = `
     <div class="page-head no-print">
       <a class="back" href="#/projects/${esc(project.id)}">← Zurück zum Fragebogen</a>
-      <button type="button" class="btn" id="print-btn">Drucken / als PDF speichern</button>
+      <span class="head-actions">
+        <button type="button" class="btn secondary" id="madmp-btn" title="RDA DMP Common Standard">maDMP exportieren</button>
+        <button type="button" class="btn" id="print-btn">Drucken / als PDF speichern</button>
+      </span>
     </div>
     <article class="document">
       <h1>${esc(project.name)}</h1>
@@ -76,4 +80,6 @@ export function render(container, params) {
   `;
 
   container.querySelector('#print-btn').addEventListener('click', () => window.print());
+  container.querySelector('#madmp-btn').addEventListener('click', () =>
+    downloadJson(`${slug(project.name, 'dmp')}.madmp.json`, toMaDmp(km, project)));
 }

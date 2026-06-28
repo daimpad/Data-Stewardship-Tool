@@ -32,8 +32,9 @@
           "type": "list",
           "title": "Welche Datentypen und -formate entstehen?",
           "text": "Pro Datentyp einen Eintrag anlegen.",
+          "madmpField": "dataset[]",
           "itemTemplate": [
-            { "id": "se_type_name", "type": "value", "title": "Datentyp / Format", "text": "", "valueType": "string" },
+            { "id": "se_type_name", "type": "value", "title": "Datentyp / Format", "text": "", "valueType": "string", "madmpField": "dataset.title" },
             { "id": "se_type_vol", "type": "value", "title": "Geschätztes Volumen (GB)", "text": "", "valueType": "number", "validations": [ { "type": "min", "value": 0 } ] }
           ]
         },
@@ -139,6 +140,7 @@
           "text": "",
           "required": true,
           "tagIds": ["tag_personal"],
+          "madmpField": "dataset.personal_data",
           "references": [ { "label": "DSGVO (Volltext, EUR-Lex)", "url": "https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32016R0679" } ],
           "answers": [
             { "id": "se_pers_yes", "label": "Ja", "advice": "DSGVO beachten; Einwilligungen und Rechtsgrundlage klären.", "followUps": [
@@ -174,7 +176,8 @@
           "references": [
             { "label": "SPDX-Lizenzliste", "url": "https://spdx.org/licenses/" },
             { "label": "Creative-Commons-Lizenzen", "url": "https://creativecommons.org/licenses/" }
-          ]
+          ],
+          "madmpField": "distribution.license"
         },
         {
           "id": "se_ethics",
@@ -201,9 +204,10 @@
           "text": "",
           "required": true,
           "tagIds": ["tag_openaccess"],
+          "madmpField": "distribution.data_access",
           "answers": [
             { "id": "se_share_yes", "label": "Ja", "advice": "", "followUps": [
-              { "id": "se_share_repo", "type": "value", "title": "In welchem Repositorium?", "text": "z. B. Zenodo, fachspezifisches Repositorium", "valueType": "string", "references": [ { "label": "re3data – Repositorien finden", "url": "https://www.re3data.org/" }, { "label": "Zenodo", "url": "https://zenodo.org/" } ] }
+              { "id": "se_share_repo", "type": "value", "title": "In welchem Repositorium?", "text": "z. B. Zenodo, fachspezifisches Repositorium", "valueType": "string", "references": [ { "label": "re3data – Repositorien finden", "url": "https://www.re3data.org/" }, { "label": "Zenodo", "url": "https://zenodo.org/" } ], "madmpField": "distribution.host" }
             ] },
             { "id": "se_share_part", "label": "Teilweise", "advice": "", "followUps": [
               { "id": "se_share_part_why", "type": "value", "title": "Welche Teile werden nicht geteilt und warum?", "text": "", "valueType": "string" }
@@ -246,14 +250,16 @@
           "text": "",
           "required": true,
           "valueType": "string",
-          "validations": [ { "type": "minLength", "value": 2 } ]
+          "validations": [ { "type": "minLength", "value": 2 } ],
+          "madmpField": "contact.name"
         },
         {
           "id": "se_contact",
           "type": "value",
           "title": "Kontakt-E-Mail der verantwortlichen Person",
           "text": "",
-          "valueType": "email"
+          "valueType": "email",
+          "madmpField": "contact.mbox"
         },
         {
           "id": "se_resources",

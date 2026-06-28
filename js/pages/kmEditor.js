@@ -6,6 +6,7 @@
 
 import * as storage from '../storage.js';
 import * as M from '../models.js';
+import { MADMP_FIELDS } from '../madmp.js';
 import { esc, notFound } from '../util.js';
 
 const TYPE_LABELS = {
@@ -89,6 +90,10 @@ export function render(container, params) {
     } else if (f === 'q-required') {
       const q = M.findQuestion(km, id);
       if (q) { if (e.target.checked) q.required = true; else delete q.required; }
+      save();
+    } else if (f === 'q-madmp') {
+      const q = M.findQuestion(km, id);
+      if (q) { if (e.target.value) q.madmpField = e.target.value; else delete q.madmpField; }
       save();
     }
   });
@@ -250,7 +255,19 @@ function viewQuestion(q, idx, total) {
       ${viewQuestionTags(q)}
       ${viewQuestionBody(q)}
       ${viewReferences(q)}
+      ${viewMadmp(q)}
     </div>`;
+}
+
+function viewMadmp(q) {
+  return `<div class="ed-madmp">
+    <label class="muted small">maDMP-Feld:
+      <select data-field="q-madmp" data-id="${esc(q.id)}">
+        ${MADMP_FIELDS.map((f) =>
+          `<option value="${esc(f.key)}" ${(q.madmpField || '') === f.key ? 'selected' : ''}>${esc(f.label)}</option>`).join('')}
+      </select>
+    </label>
+  </div>`;
 }
 
 function viewReferences(q) {

@@ -73,6 +73,7 @@ export function applyTypeDefaults(q, type) {
   if (q.required) next.required = true; // type-independent, preserve across type changes
   if (q.references) next.references = q.references;
   if (q.tagIds) next.tagIds = q.tagIds;
+  if (q.madmpField) next.madmpField = q.madmpField;
   if (type === 'value') {
     next.valueType = q.valueType || 'string';
     next.validations = q.validations || [];

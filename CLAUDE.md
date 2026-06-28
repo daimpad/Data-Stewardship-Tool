@@ -64,6 +64,11 @@ PHP/MySQL backend (Stage 2) confined to that one file.
   `tagIds`; a project picks `selectedTagIds`. `models.isVisibleByTags()` gates
   rendering and `countProgress` (no selection = all visible; untagged always
   visible). Questionnaire/document skip hidden questions and empty chapters.
+- **maDMP**: a question may carry `madmpField` (key from `madmp.MADMP_FIELDS`);
+  `madmp.toMaDmp(km, project)` builds an RDA DMP Common Standard `dmp` object.
+  A `list` question mapped to `dataset[]` yields one dataset per item; scalar
+  `dataset.*`/`distribution.*` mappings act as defaults. Exported from the
+  document page.
 - **Project**: `{ kmId, name, replies }` where `replies` is a map keyed by a
   dotted **path** of ids (e.g. `q_personal.a_yes.q_legal`).
 - **Reply types**: `value` (string), `answer` (answer id), `multiChoice` (array of
