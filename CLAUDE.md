@@ -1,13 +1,13 @@
 # CLAUDE.md
 
-Guidance for Claude Code (claude.ai/code) when working in **`data-stewart-tool/`**.
+Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## ⚠️ Hard boundary
 
-This project lives **only** inside `data-stewart-tool/`. The sibling folders
-`engine-backend-develop/` and `engine-frontend-develop/` are the original
-Data Stewardship Wizard source and are **read-only references** — never add to,
-edit, or delete anything inside them.
+The **Data Stewart Tool** app lives at the **repository root** (`index.html`,
+`css/`, `js/`, `data/`). The sibling folders `engine-backend-develop/` and
+`engine-frontend-develop/` are the original Data Stewardship Wizard source and
+are **read-only references** — never add to, edit, or delete anything inside them.
 
 ## Project overview
 
@@ -24,15 +24,15 @@ read it before making structural changes.
 
 ## Run
 
-ES modules require an `http://` origin, so serve the folder statically:
+ES modules require an `http://` origin, so serve the repository root statically:
 
 ```bash
-cd data-stewart-tool
-python3 -m http.server 8000     # or: npx serve .
+python3 -m http.server 8000     # from the repo root; or: npx serve .
 # open http://localhost:8000
 ```
 
-No install, no build, no tests tooling — it is plain browser JS.
+No install, no build, no test tooling — it is plain browser JS. Deployed to
+GitHub Pages from `main` via `.github/workflows/static.yml`.
 
 ## Architecture (layers mirror the DSW in slim form)
 
