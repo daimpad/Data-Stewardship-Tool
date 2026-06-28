@@ -52,10 +52,11 @@ PHP/MySQL backend (Stage 2) confined to that one file.
 ## Data model (summary — full shapes in ZIELBILD.md §4)
 
 - **Knowledge Model**: nested JSON — `chapters[] → questions[] → answers[] → followUps[]`.
-- **Question types** (3 only): `value`, `options`, `list`.
+- **Question types** (4 only): `value`, `options`, `multiChoice`, `list`.
 - **Project**: `{ kmId, name, replies }` where `replies` is a map keyed by a
   dotted **path** of ids (e.g. `q_personal.a_yes.q_legal`).
-- **Reply types**: `value` (string), `answer` (answer id), `itemList` (array of item ids).
+- **Reply types**: `value` (string), `answer` (answer id), `multiChoice` (array of
+  choice ids), `itemList` (array of item ids).
 
 ## Conventions
 

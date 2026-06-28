@@ -120,14 +120,15 @@ Im DSW ist ein KM ein UUID-Graph mit getrennten Entity-Maps. Vereinfacht nutzen 
 }
 ```
 
-### 4.2 Fragen (auf 3 Typen reduziert)
-Der DSW kennt 7 Fragetypen; wir bilden die **drei strukturell wichtigsten** ab:
+### 4.2 Fragen (auf 4 Typen reduziert)
+Der DSW kennt 7 Fragetypen; wir bilden die **vier strukturell wichtigsten** ab:
 
 | Typ | DSW-Pendant | Bedeutung |
 |-----|-------------|-----------|
-| `value`   | ValueQuestion       | Freitext/Zahl/Datum/E-Mail/URL (per `valueType`) |
-| `options` | OptionsQuestion     | Einfachauswahl; jede Antwort kann **Folgefragen** auslösen |
-| `list`    | ListQuestion        | Wiederholbare Gruppe (Item-Vorlage aus Unterfragen) |
+| `value`       | ValueQuestion       | Freitext/Zahl/Datum/E-Mail/URL (per `valueType`) |
+| `options`     | OptionsQuestion     | Einfachauswahl; jede Antwort kann **Folgefragen** auslösen |
+| `multiChoice` | MultiChoiceQuestion | Mehrfachauswahl aus festen Optionen (Checkboxen) |
+| `list`        | ListQuestion        | Wiederholbare Gruppe (Item-Vorlage aus Unterfragen) |
 
 ```jsonc
 // value-Frage
@@ -149,6 +150,19 @@ Der DSW kennt 7 Fragetypen; wir bilden die **drei strukturell wichtigsten** ab:
     { "id": "a_yes", "label": "Ja", "advice": "DSGVO beachten.",
       "followUps": [ /* weitere Fragen, nur sichtbar bei dieser Antwort */ ] },
     { "id": "a_no",  "label": "Nein", "advice": null, "followUps": [] }
+  ]
+}
+
+// multiChoice-Frage (Mehrfachauswahl)
+{
+  "id": "q_storage",
+  "type": "multiChoice",
+  "title": "Wo werden die Daten gespeichert?",
+  "text": null,
+  "choices": [
+    { "id": "c_local", "label": "Lokaler Server" },
+    { "id": "c_cloud", "label": "Cloud" },
+    { "id": "c_repo",  "label": "Repositorium" }
   ]
 }
 
@@ -174,6 +188,7 @@ Der DSW kennt 7 Fragetypen; wir bilden die **drei strukturell wichtigsten** ab:
     "q_name":            { "type": "value",    "value": "Klimadaten 2026" },
     "q_personal":        { "type": "answer",   "value": "a_yes" },
     "q_personal.a_yes.q_legal": { "type": "value", "value": "Einwilligung" },
+    "q_storage":         { "type": "multiChoice", "value": ["c_cloud", "c_repo"] },
     "q_datasets":        { "type": "itemList", "value": ["it_1", "it_2"] },
     "q_datasets.it_1.q_format": { "type": "value", "value": "CSV" }
   }
@@ -190,10 +205,11 @@ Dadurch lassen sich Folgefragen und Listen-Einträge eindeutig verorten:
 - Frage innerhalb eines Listen-Eintrags: `q_datasets.it_1.q_format`
   (Listenfrage → generierte Item-ID → Unterfrage)
 
-**Reply-Typen** (analog DSW: StringReply / AnswerReply / ItemListReply):
-- `value`    → `value` ist ein String (auch Zahlen/Daten als String gehalten)
-- `answer`   → `value` ist die ID der gewählten Antwort
-- `itemList` → `value` ist ein Array von Item-IDs; die Felder je Item liegen als
+**Reply-Typen** (analog DSW: StringReply / AnswerReply / MultiChoiceReply / ItemListReply):
+- `value`       → `value` ist ein String (auch Zahlen/Daten als String gehalten)
+- `answer`      → `value` ist die ID der gewählten Antwort
+- `multiChoice` → `value` ist ein Array gewählter Choice-IDs
+- `itemList`    → `value` ist ein Array von Item-IDs; die Felder je Item liegen als
   eigene Replies unter dem jeweiligen Item-Pfad
 
 ---
@@ -227,7 +243,7 @@ Dadurch lassen sich Folgefragen und Listen-Einträge eindeutig verorten:
 | DSW-Konzept | Hier abgebildet als | Vereinfachung |
 |-------------|---------------------|---------------|
 | Knowledge Model (UUID-Graph) | verschachteltes KM-JSON | nur Kapitel/Fragen/Antworten/Folgefragen/Listen |
-| 7 Fragetypen | 3 Typen (`value`, `options`, `list`) | MultiChoice/Integration/ItemSelect/File entfallen |
+| 7 Fragetypen | 4 Typen (`value`, `options`, `multiChoice`, `list`) | Integration/ItemSelect/File entfallen |
 | KM-Editor (event-sourced) | direkter JSON-Editor | keine Versionierung/Events |
 | Package + Registry | — | entfällt komplett |
 | Project + Replies | Projekt-JSON mit `replies`-Map | gleiche Pfad-Logik, reduziert |
