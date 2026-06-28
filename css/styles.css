@@ -141,6 +141,8 @@ textarea { width: 100%; min-height: 3rem; resize: vertical; }
 .ed-references { margin-top: 0.5rem; padding-left: 0.6rem; border-left: 2px dashed var(--border); }
 .ed-reference { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.3rem; }
 .ed-reference input { flex: 1; }
+.ed-madmp { margin-top: 0.5rem; }
+.ed-madmp select { margin-left: 0.3rem; }
 
 /* Tags -------------------------------------------------------------------- */
 .km-tags { margin: 0 0 1.2rem; padding: 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }

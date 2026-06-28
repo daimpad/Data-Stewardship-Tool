@@ -71,6 +71,10 @@ Browser und behält dabei die konzeptuelle Struktur bei.
 - **Tags & Zuschnitt** — Fragen mit Tags versehen (im Editor) und pro Projekt
   Tags auswählen, um den Fragebogen zuzuschneiden: ohne Auswahl alle Fragen,
   mit Auswahl nur passend getaggte (ungetaggte bleiben immer sichtbar) — wie im DSW.
+- **maDMP-Export** — den ausgefüllten Fragebogen als **RDA DMP Common Standard**
+  JSON exportieren. Im Editor wird je Frage ein maDMP-Feld zugeordnet; der Exporter
+  füllt daraus ein standard-nahes `dmp`-Objekt (inkl. mehrerer Datasets aus einer
+  Listenfrage). Die Science-Europe-Vorlage ist beispielhaft vorgemappt.
 - **Beispiel-Wissensmodell** wird beim ersten Start automatisch geladen.
 
 ## Schnellstart
@@ -197,6 +201,7 @@ js/storage.js        Persistenz (localStorage)
 js/models.js         Domänen-Helfer
 js/util.js           kleine Helfer
 js/templates.js      Registry der mitgelieferten Vorlagen
+js/madmp.js          maDMP-Export (RDA DMP Common Standard)
 js/pages/*.js        Seiten/Views
 data/sample-km.json  Beispiel-Wissensmodell (Seed)
 data/templates/*.json  mitgelieferte DMP-Vorlagen (Science Europe, DFG)
