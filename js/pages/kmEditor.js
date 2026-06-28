@@ -75,6 +75,10 @@ export function render(container, params) {
       const i = Number(e.target.dataset.idx);
       if (q && q.validations && q.validations[i]) q.validations[i].type = e.target.value;
       save();
+    } else if (f === 'q-required') {
+      const q = M.findQuestion(km, id);
+      if (q) { if (e.target.checked) q.required = true; else delete q.required; }
+      save();
     }
   });
 
@@ -175,6 +179,9 @@ function viewQuestion(q, idx, total) {
             `<option value="${v}" ${v === q.type ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
         <input class="ed-title grow" data-field="q-title" data-id="${esc(q.id)}" value="${esc(q.title)}" placeholder="Fragetext">
+        <label class="req-toggle" title="Pflichtfrage">
+          <input type="checkbox" data-field="q-required" data-id="${esc(q.id)}" ${q.required ? 'checked' : ''}> Pflicht
+        </label>
         <span class="ed-tools">
           ${moveButtons('move-question', q.id, idx, total)}
           <button type="button" class="btn-sm danger" data-action="del-question" data-id="${esc(q.id)}">✕</button>
