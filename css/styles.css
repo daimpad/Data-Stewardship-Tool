@@ -117,6 +117,7 @@ textarea { width: 100%; min-height: 3rem; resize: vertical; }
 .ed-row .grow, .ed-title.grow { flex: 1; }
 .ed-title { flex: 1; font-weight: 600; }
 .ed-tools { display: flex; gap: 0.3rem; }
+.req-toggle { font-size: 0.85rem; color: var(--muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 0.2rem; }
 .ed-help { width: 100%; font-size: 0.9rem; }
 .ed-questions { margin-top: 0.7rem; display: flex; flex-direction: column; gap: 0.6rem; }
 
@@ -151,6 +152,10 @@ textarea { width: 100%; min-height: 3rem; resize: vertical; }
 .q-input.invalid { border-color: var(--danger); outline-color: #f6d6d5; }
 .field-error { color: var(--danger); font-size: 0.85rem; margin: 0.2rem 0 0; }
 .field-error:empty { display: none; }
+.req { color: var(--danger); font-weight: 700; }
+.req-summary { font-size: 0.9rem; font-weight: 600; }
+.req-summary.open { color: var(--danger); }
+.req-summary.done { color: #2e7d32; }
 .opt { display: block; margin: 0.2rem 0; cursor: pointer; }
 .opt input { margin-right: 0.4rem; }
 .advice { margin: 0.2rem 0 0.5rem 1.4rem; font-size: 0.9rem; color: var(--primary-dark); background: var(--accent); padding: 0.3rem 0.6rem; border-radius: 6px; }

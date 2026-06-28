@@ -50,6 +50,7 @@ export function newProject(kmId, name) {
 // Used when creating a question and when its type is changed in the editor.
 export function applyTypeDefaults(q, type) {
   const next = { id: q.id, type, title: q.title, text: q.text };
+  if (q.required) next.required = true; // type-independent, preserve across type changes
   if (type === 'value') {
     next.valueType = q.valueType || 'string';
     next.validations = q.validations || [];
@@ -218,33 +219,51 @@ export function move(arr, id, dir) {
 // --- Progress ------------------------------------------------------------
 // Counts answered vs. total *visible* answerable questions, following the
 // current replies (selected options reveal follow-ups; list items expand).
-// The list container itself is structural and not counted.
+// Also tracks required questions: requiredTotal and requiredOpen (visible
+// required questions that are not yet satisfactorily answered).
+// The list container itself is structural and not counted in total/answered.
 export function countProgress(km, replies) {
   let total = 0;
   let answered = 0;
+  let requiredTotal = 0;
+  let requiredOpen = 0;
+
+  const tally = (q, done) => {
+    if (q.required) {
+      requiredTotal++;
+      if (!done) requiredOpen++;
+    }
+  };
 
   const visit = (q, path) => {
     const r = replies[path];
     if (q.type === 'value') {
       total++;
-      if (r && r.value !== '' && r.value != null && validateValue(q, r.value) === null) answered++;
+      const done = !!r && r.value !== '' && r.value != null && validateValue(q, r.value) === null;
+      if (done) answered++;
+      tally(q, done);
     } else if (q.type === 'options') {
       total++;
-      if (r && r.value) {
+      const done = !!(r && r.value);
+      if (done) {
         answered++;
         const a = q.answers.find((x) => x.id === r.value);
         if (a) a.followUps.forEach((fq) => visit(fq, `${path}.${a.id}.${fq.id}`));
       }
+      tally(q, done);
     } else if (q.type === 'multiChoice') {
       total++;
-      if (r && (r.value || []).length) answered++;
+      const done = !!(r && (r.value || []).length);
+      if (done) answered++;
+      tally(q, done);
     } else if (q.type === 'list') {
       const items = (r && r.value) || [];
+      tally(q, items.length > 0); // a required list needs at least one entry
       items.forEach((itemId) =>
         q.itemTemplate.forEach((sq) => visit(sq, `${path}.${itemId}.${sq.id}`)));
     }
   };
 
   km.chapters.forEach((ch) => ch.questions.forEach((q) => visit(q, q.id)));
-  return { total, answered };
+  return { total, answered, requiredTotal, requiredOpen };
 }

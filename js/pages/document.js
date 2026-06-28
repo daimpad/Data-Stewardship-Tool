@@ -16,7 +16,7 @@ export function render(container, params) {
 
   function renderAnswer(q, path) {
     const r = replies[path];
-    let out = `<div class="doc-q"><div class="doc-question">${esc(q.title)}</div>`;
+    let out = `<div class="doc-q"><div class="doc-question">${esc(q.title)}${q.required ? ' <span class="req">*</span>' : ''}</div>`;
 
     if (q.type === 'value') {
       out += `<div class="doc-answer">${r && r.value !== '' ? esc(r.value) : unanswered}</div>`;

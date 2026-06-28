@@ -50,9 +50,11 @@ Browser und behält dabei die konzeptuelle Struktur bei.
 - **Wissensmodell-Editor** — Kapitel, Fragen und Antworten als Baum pflegen;
   verschachtelte Folgefragen, Mehrfachauswahl-Optionen und wiederholbare Listen;
   optionale **Validierungen** für Wert-Fragen (Min/Max, Länge, Regex; dazu E-Mail-/
-  URL-/Zahl-Prüfung je Werttyp); Fragen/Kapitel umsortieren und löschen; Auto-Save.
+  URL-/Zahl-Prüfung je Werttyp); Fragen als **Pflicht** markieren;
+  Fragen/Kapitel umsortieren und löschen; Auto-Save.
 - **Fragebogen** — das Wissensmodell wird als Formular gerendert; Folgefragen und
-  Listeneinträge erscheinen dynamisch; Live-Fortschrittsanzeige.
+  Listeneinträge erscheinen dynamisch; Live-Fortschrittsanzeige. Pflichtfragen sind
+  mit `*` markiert; ein Zähler zeigt, wie viele Pflichtfelder noch offen sind.
 - **Dokument** — die Antworten werden als gegliedertes, druckbares HTML
   ausgegeben (Browser-Druck → „Als PDF speichern").
 - **Import/Export** — Wissensmodelle als JSON exportieren und wieder importieren

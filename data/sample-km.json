@@ -9,7 +9,7 @@
       "title": "1. Allgemeine Angaben",
       "text": "Grundlegende Informationen zum Forschungsprojekt.",
       "questions": [
-        { "id": "q_title", "type": "value", "title": "Wie lautet der Projekttitel?", "text": "", "valueType": "string", "validations": [ { "type": "minLength", "value": 3 } ] },
+        { "id": "q_title", "type": "value", "title": "Wie lautet der Projekttitel?", "text": "", "required": true, "valueType": "string", "validations": [ { "type": "minLength", "value": 3 } ] },
         { "id": "q_email", "type": "value", "title": "Kontakt-E-Mail der datenverantwortlichen Person", "text": "", "valueType": "email" },
         { "id": "q_start", "type": "value", "title": "Geplanter Projektbeginn", "text": "", "valueType": "date" }
       ]
@@ -24,6 +24,7 @@
           "type": "options",
           "title": "Werden personenbezogene Daten erhoben?",
           "text": "",
+          "required": true,
           "answers": [
             {
               "id": "a_yes",

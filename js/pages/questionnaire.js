@@ -32,11 +32,18 @@ export function render(container, params) {
   const clear = (path) => { delete project.replies[path]; storage.saveProject(project); };
 
   function updateProgress() {
-    const { answered, total } = M.countProgress(km, project.replies);
+    const { answered, total, requiredTotal, requiredOpen } = M.countProgress(km, project.replies);
     const pct = total ? Math.round((answered / total) * 100) : 0;
+    let req = '';
+    if (requiredTotal > 0) {
+      req = requiredOpen > 0
+        ? `<span class="req-summary open">${requiredOpen} Pflichtfeld${requiredOpen === 1 ? '' : 'er'} offen</span>`
+        : '<span class="req-summary done">Alle Pflichtfelder ausgefüllt ✓</span>';
+    }
     progressEl.innerHTML = `
       <div class="bar"><span style="width:${pct}%"></span></div>
-      <span class="muted">${answered} / ${total} beantwortet</span>`;
+      <span class="muted">${answered} / ${total} beantwortet</span>
+      ${req}`;
   }
 
   function draw() {
@@ -53,7 +60,7 @@ export function render(container, params) {
   function viewQuestion(q, path) {
     const r = get(path);
     let html = `<div class="q">
-      <label class="q-title">${esc(q.title)}</label>
+      <label class="q-title">${esc(q.title)}${q.required ? ' <span class="req" title="Pflichtfrage">*</span>' : ''}</label>
       ${q.text ? `<p class="q-text muted">${esc(q.text)}</p>` : ''}`;
 
     if (q.type === 'value') {
