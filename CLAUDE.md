@@ -77,7 +77,7 @@ PHP/MySQL backend (Stage 2) confined to that one file.
 |-------|-------------|---------|
 | `#/km` | `pages/kmList.js` | list / create knowledge models |
 | `#/km/:id/edit` | `pages/kmEditor.js` | edit chapters, questions, answers, lists |
-| `#/projects` | `pages/projectList.js` | list / create projects |
+| `#/projects` | `pages/projectList.js` | list projects; duplicate / export / import |
 | `#/projects/:id` | `pages/questionnaire.js` | render KM as a form, store replies |
 | `#/projects/:id/document` | `pages/document.js` | render answers as printable HTML |
 

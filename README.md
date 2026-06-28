@@ -57,8 +57,10 @@ Browser und behält dabei die konzeptuelle Struktur bei.
   mit `*` markiert; ein Zähler zeigt, wie viele Pflichtfelder noch offen sind.
 - **Dokument** — die Antworten werden als gegliedertes, druckbares HTML
   ausgegeben (Browser-Druck → „Als PDF speichern").
-- **Import/Export** — Wissensmodelle als JSON exportieren und wieder importieren
-  (zum Teilen oder Sichern; eine Mini-Variante des DSW-Paketgedankens).
+- **Import/Export & Duplizieren** — Wissensmodelle *und* Projekte als JSON
+  exportieren und wieder importieren (zum Teilen oder Sichern; eine Mini-Variante
+  des DSW-Paketgedankens). Projekte lassen sich zudem **duplizieren** (entspricht
+  dem Template-Gedanken des DSW).
 - **Beispiel-Wissensmodell** wird beim ersten Start automatisch geladen.
 
 ## Schnellstart

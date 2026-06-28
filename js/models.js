@@ -46,6 +46,15 @@ export function newProject(kmId, name) {
   };
 }
 
+// Deep-copy a project under a new id (for "duplicate"). Replies are plain JSON.
+export function duplicateProject(p) {
+  const copy = JSON.parse(JSON.stringify(p));
+  copy.id = uid('prj');
+  copy.name = `${p.name} (Kopie)`;
+  copy.createdAt = new Date().toISOString();
+  return copy;
+}
+
 // Keep id/title/text but (re)set the fields specific to a question type.
 // Used when creating a question and when its type is changed in the editor.
 export function applyTypeDefaults(q, type) {
