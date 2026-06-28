@@ -1,0 +1,98 @@
+module Wizard.Api.Resource.Config.ClientConfigDTO where
+
+import qualified Data.Aeson as A
+import qualified Data.Map.Strict as M
+import qualified Data.UUID as U
+import GHC.Generics
+
+import Shared.Common.Model.Config.SimpleFeature
+import Wizard.Model.Plugin.PluginList
+import Wizard.Model.Tenant.Config.TenantConfig
+import Wizard.Model.User.UserProfile
+import WizardLib.Public.Model.OpenId.OpenIdClientSimple
+import WizardLib.Public.Model.Tenant.Config.TenantConfig
+
+data ClientConfigDTO
+  = HousekeepingInProgressClientConfigDTO
+      { message :: String
+      }
+  | ClientConfigDTO
+      { user :: Maybe UserProfile
+      , tours :: [String]
+      , organization :: TenantConfigOrganization
+      , authentication :: ClientConfigAuthDTO
+      , privacyAndSupport :: TenantConfigPrivacyAndSupport
+      , dashboardAndLoginScreen :: TenantConfigDashboardAndLoginScreen
+      , lookAndFeel :: TenantConfigLookAndFeel
+      , registry :: ClientConfigRegistryDTO
+      , project :: ClientConfigProjectDTO
+      , submission :: SimpleFeature
+      , cloud :: ClientConfigCloudDTO
+      , owl :: TenantConfigOwl
+      , admin :: ClientConfigAdminDTO
+      , features :: ClientConfigFeaturesDTO
+      , plugins :: [PluginList]
+      , pluginSettings :: M.Map U.UUID A.Value
+      , signalBridge :: ClientConfigSignalBridgeDTO
+      , modules :: [ClientConfigModuleDTO]
+      }
+  deriving (Show, Eq, Generic)
+
+data ClientConfigAuthDTO = ClientConfigAuthDTO
+  { defaultRoleUuid :: U.UUID
+  , internal :: TenantConfigAuthenticationInternal
+  , external :: ClientConfigAuthExternalDTO
+  }
+  deriving (Generic, Eq, Show)
+
+data ClientConfigAuthExternalDTO = ClientConfigAuthExternalDTO
+  { services :: [OpenIdClientSimple]
+  }
+  deriving (Generic, Eq, Show)
+
+data ClientConfigRegistryDTO = ClientConfigRegistryDTO
+  { enabled :: Bool
+  , url :: String
+  }
+  deriving (Show, Eq, Generic)
+
+data ClientConfigProjectDTO = ClientConfigProjectDTO
+  { projectVisibility :: TenantConfigProjectVisibility
+  , projectSharing :: TenantConfigProjectSharing
+  , projectCreation :: ProjectCreation
+  , projectTagging :: SimpleFeature
+  , summaryReport :: SimpleFeature
+  , feedback :: SimpleFeature
+  }
+  deriving (Generic, Eq, Show)
+
+data ClientConfigCloudDTO = ClientConfigCloudDTO
+  { enabled :: Bool
+  , serverUrl :: String
+  }
+  deriving (Generic, Eq, Show)
+
+data ClientConfigAdminDTO = ClientConfigAdminDTO
+  { enabled :: Bool
+  }
+  deriving (Generic, Eq, Show)
+
+data ClientConfigFeaturesDTO = ClientConfigFeaturesDTO
+  { aiAssistantEnabled :: Bool
+  , toursEnabled :: Bool
+  }
+  deriving (Generic, Eq, Show)
+
+data ClientConfigSignalBridgeDTO = ClientConfigSignalBridgeDTO
+  { webSocketUrl :: Maybe String
+  }
+  deriving (Generic, Eq, Show)
+
+data ClientConfigModuleDTO = ClientConfigModuleDTO
+  { title :: String
+  , description :: String
+  , icon :: String
+  , url :: String
+  , external :: Bool
+  }
+  deriving (Generic, Eq, Show)

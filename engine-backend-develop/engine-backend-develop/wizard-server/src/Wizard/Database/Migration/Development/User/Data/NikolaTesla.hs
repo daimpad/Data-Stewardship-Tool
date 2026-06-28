@@ -1,0 +1,66 @@
+module Wizard.Database.Migration.Development.User.Data.NikolaTesla where
+
+import Data.Maybe (fromJust)
+import Data.Time
+
+import Shared.Common.Util.Date
+import Shared.Common.Util.Uuid
+import Wizard.Database.Migration.Development.Tenant.Data.Tenants
+import Wizard.Database.Migration.Development.User.Data.Roles
+import Wizard.Model.Tenant.Tenant
+import Wizard.Model.User.User
+import Wizard.Service.User.UserMapper
+import WizardLib.Public.Database.Migration.Development.User.Data.UserGroups
+import WizardLib.Public.Model.User.UserGroup
+import WizardLib.Public.Model.User.UserGroupMembership
+import WizardLib.Public.Model.User.UserSuggestion
+import WizardLib.Public.Model.User.UserTour
+import WizardLib.Public.Service.User.RoleMapper (toRoleSimple)
+
+userNikola :: User
+userNikola =
+  User
+    { uuid = u' "30d48cf4-8c8a-496f-bafe-585bd238f798"
+    , firstName = "Nikola"
+    , lastName = "Tesla"
+    , email = "nikola.tesla@example.com"
+    , affiliation = Nothing
+    , role = toRoleSimple dataStewardRole
+    , active = True
+    , -- cspell:disable
+      passwordHash = "pbkdf1:sha256|17|awVwfF3h27PrxINtavVgFQ==|iUFbQnZFv+rBXBu1R2OkX+vEjPtohYk5lsyIeOBdEy4="
+    , -- cspell:enable
+      imageUrl = Nothing
+    , locale = Nothing
+    , machine = False
+    , lastSeenNewsId = Nothing
+    , tenantUuid = defaultTenant.uuid
+    , lastVisitedAt = UTCTime (fromJust $ fromGregorianValid 2018 1 26) 0
+    , createdAt = UTCTime (fromJust $ fromGregorianValid 2018 1 26) 0
+    , updatedAt = UTCTime (fromJust $ fromGregorianValid 2018 1 26) 0
+    , emailVerifiedAt = Just $ UTCTime (fromJust $ fromGregorianValid 2018 1 26) 0
+    , emailPending = Nothing
+    }
+
+userNikolaBioGroupMembership :: UserGroupMembership
+userNikolaBioGroupMembership =
+  UserGroupMembership
+    { userGroupUuid = bioGroup.uuid
+    , userUuid = userNikola.uuid
+    , mType = OwnerUserGroupMembershipType
+    , tenantUuid = defaultTenant.uuid
+    , createdAt = dt' 2018 1 21
+    , updatedAt = dt' 2018 1 21
+    }
+
+userNikolaTour1 :: UserTour
+userNikolaTour1 =
+  UserTour
+    { userUuid = userNikola.uuid
+    , tourId = "TOUR_1"
+    , tenantUuid = defaultTenant.uuid
+    , createdAt = dt' 2018 1 21
+    }
+
+userNikolaSuggestionDto :: UserSuggestion
+userNikolaSuggestionDto = toSuggestion . toSimple $ userNikola

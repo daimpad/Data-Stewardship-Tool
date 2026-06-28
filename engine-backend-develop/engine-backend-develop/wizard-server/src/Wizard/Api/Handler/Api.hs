@@ -1,0 +1,115 @@
+module Wizard.Api.Handler.Api where
+
+import Servant
+
+import Wizard.Api.Handler.ApiKey.Api
+import Wizard.Api.Handler.AppKey.Api
+import Wizard.Api.Handler.Config.Api
+import Wizard.Api.Handler.Dev.Api
+import Wizard.Api.Handler.Document.Api
+import Wizard.Api.Handler.DocumentTemplate.Api
+import Wizard.Api.Handler.DocumentTemplateDraft.Api
+import Wizard.Api.Handler.DocumentTemplateDraft.Asset.Api
+import Wizard.Api.Handler.DocumentTemplateDraft.File.Api
+import Wizard.Api.Handler.DocumentTemplateDraft.Folder.Api
+import Wizard.Api.Handler.Domain.Api
+import Wizard.Api.Handler.ExternalLink.Api
+import Wizard.Api.Handler.Feedback.Api
+import Wizard.Api.Handler.Info.Api
+import Wizard.Api.Handler.KnowledgeModel.Api
+import Wizard.Api.Handler.KnowledgeModelEditor.Api
+import Wizard.Api.Handler.KnowledgeModelPackage.Api
+import Wizard.Api.Handler.KnowledgeModelSecret.Api
+import Wizard.Api.Handler.Locale.Api
+import Wizard.Api.Handler.OpenIdClient.Api
+import Wizard.Api.Handler.PersistentCommand.Api
+import Wizard.Api.Handler.Prefab.Api
+import Wizard.Api.Handler.Project.Api
+import Wizard.Api.Handler.ProjectCommentThread.Api
+import Wizard.Api.Handler.ProjectFile.Api
+import Wizard.Api.Handler.Registry.Api
+import Wizard.Api.Handler.Role.Api
+import Wizard.Api.Handler.Submission.Api
+import Wizard.Api.Handler.Tenant.Api
+import Wizard.Api.Handler.Token.Api
+import Wizard.Api.Handler.TypeHint.Api
+import Wizard.Api.Handler.User.Api
+import Wizard.Api.Handler.UserEmailLink.Api
+import Wizard.Api.Handler.UserGroup.Api
+import Wizard.Model.Context.BaseContext
+
+type ApplicationAPI =
+  UserEmailLinkAPI
+    :<|> ApiKeyAPI
+    :<|> AppKeyAPI
+    :<|> ConfigAPI
+    :<|> DevAPI
+    :<|> DocumentTemplateAPI
+    :<|> DocumentTemplateDraftAPI
+    :<|> DocumentTemplateFolderAPI
+    :<|> DocumentTemplateAssetAPI
+    :<|> DocumentTemplateFileAPI
+    :<|> DocumentAPI
+    :<|> DomainAPI
+    :<|> ExternalLinkAPI
+    :<|> FeedbackAPI
+    :<|> InfoAPI
+    :<|> KnowledgeModelAPI
+    :<|> KnowledgeModelEditorAPI
+    :<|> KnowledgeModelPackageAPI
+    :<|> KnowledgeModelSecretAPI
+    :<|> LocaleAPI
+    :<|> OpenIdClientAPI
+    :<|> PersistentCommandAPI
+    :<|> PrefabAPI
+    :<|> ProjectAPI
+    :<|> ProjectCommentThreadAPI
+    :<|> ProjectFileAPI
+    :<|> RegistryAPI
+    :<|> RoleAPI
+    :<|> SubmissionAPI
+    :<|> TenantAPI
+    :<|> TokenAPI
+    :<|> TypeHintAPI
+    :<|> UserAPI
+    :<|> UserGroupAPI
+
+applicationApi :: Proxy ApplicationAPI
+applicationApi = Proxy
+
+applicationServer :: ServerT ApplicationAPI BaseContextM
+applicationServer =
+  userEmailLinkServer
+    :<|> apiKeyServer
+    :<|> appKeyServer
+    :<|> configServer
+    :<|> devServer
+    :<|> documentTemplateServer
+    :<|> documentTemplateDraftServer
+    :<|> documentTemplateFolderServer
+    :<|> documentTemplateAssetServer
+    :<|> documentTemplateFileServer
+    :<|> documentServer
+    :<|> domainServer
+    :<|> externalLinkServer
+    :<|> feedbackServer
+    :<|> infoServer
+    :<|> knowledgeModelServer
+    :<|> knowledgeModelEditorServer
+    :<|> knowledgeModelPackageServer
+    :<|> knowledgeModelSecretServer
+    :<|> localeServer
+    :<|> openIdClientServer
+    :<|> persistentCommandServer
+    :<|> prefabServer
+    :<|> projectServer
+    :<|> projectCommentThreadServer
+    :<|> projectFileServer
+    :<|> registryServer
+    :<|> roleServer
+    :<|> submissionServer
+    :<|> tenantServer
+    :<|> tokenServer
+    :<|> typeHintServer
+    :<|> userServer
+    :<|> userGroupServer

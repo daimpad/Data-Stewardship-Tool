@@ -1,0 +1,162 @@
+name: Code Style
+
+on:
+  push:
+
+jobs:
+  hlint:
+    runs-on: ubuntu-24.04
+    
+    env:
+      HLINT_VERSION: '3.10'
+
+    steps:
+# (1) -> Init
+    - name: Checkout git repository
+      uses: actions/checkout@v6
+    
+    - name: Prepare ~/.local/bin
+      run: |
+        mkdir -p ~/.local/bin
+        export PATH=~/.local/bin:$PATH
+
+# (2) -> Setup cache
+    - name: Cache ~/.local/bin
+      id: cache-local-bin
+      uses: actions/cache@v5
+      with:
+        path: ~/.local/bin
+        key: local-bin-${{ env.HLINT_VERSION }}
+
+# (3) -> Prepare and install dependencies     
+    - name: Setup hlint
+      if: steps.cache-local-bin.outputs.cache-hit != 'true'
+      run: |
+        curl -L $HLINT_URL | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/hlint'
+      env:
+        HLINT_URL: https://github.com/ndmitchell/hlint/releases/download/v${{ env.HLINT_VERSION }}/hlint-${{ env.HLINT_VERSION }}-x86_64-linux.tar.gz
+        
+# (4) -> Run hlint
+    - name: Run hlint
+      run: |
+        hlint \
+          shared-common \
+          registry-public \
+          registry-server \
+          wizard-public \
+          wizard-server
+
+  fourmolu:
+    runs-on: ubuntu-24.04
+
+    env:
+      FOURMOLU_VERSION: '0.19.0.1'
+      HPACK_VERSION: '0.38.3'
+
+    steps:
+# (1) -> Init
+    - name: Checkout git repository
+      uses: actions/checkout@v6
+
+    - name: Prepare ~/.local/bin
+      run: |
+        mkdir -p ~/.local/bin
+        export PATH=~/.local/bin:$PATH
+
+# (2) -> Setup cache
+    - name: Cache ~/.local/bin
+      id: cache-local-bin
+      uses: actions/cache@v5
+      with:
+        path: ~/.local/bin
+        key: local-bin-${{ env.FOURMOLU_VERSION }}-${{ env.HPACK_VERSION }}
+
+# (3) -> Prepare and install dependencies
+    - name: Setup hpack && fourmolu
+      if: steps.cache-local-bin.outputs.cache-hit != 'true'
+      run: |
+        curl -L $HPACK_URL --output hpack.gz 
+        gzip -d hpack.gz
+        chmod +x hpack
+        cp ./hpack ~/.local/bin/hpack
+        
+        curl -L $FOURMOLU_URL --output fourmolu
+        chmod +x fourmolu
+        cp ./fourmolu ~/.local/bin/fourmolu
+      env:
+        HPACK_URL: https://github.com/sol/hpack/releases/download/${{ env.HPACK_VERSION}}/hpack_linux.gz
+        FOURMOLU_URL: https://github.com/fourmolu/fourmolu/releases/download/v${{ env.FOURMOLU_VERSION }}/fourmolu-${{ env.FOURMOLU_VERSION }}-linux-x86_64
+
+# (4) -> Generate cabal files
+    - name: Generate cabal files
+      run: |
+        cd shared-common
+        hpack --force
+        cd ..
+
+        cd registry-public
+        hpack --force
+        cd ..
+
+        cd registry-server
+        hpack --force
+        cd ..
+
+        cd wizard-public
+        hpack --force
+        cd ..
+
+        cd wizard-server
+        hpack --force
+        cd ..
+
+# (5) -> Run fourmolu
+    - name: Run fourmolu
+      run: |
+        FILES=$(find \
+          shared-common/src \
+          registry-public/src \
+          registry-server/src registry-server/test \
+          wizard-public/src \
+          wizard-server/src wizard-server/test \
+          -name '*.hs'
+        )
+        RET=0
+        for FILE in $FILES; do
+          if ! fourmolu --quiet --mode check $FILE; then
+            echo "Unformatted file: " . $FILE
+            RET=1
+          fi
+        done
+        exit $RET
+
+  # CSpell
+  cspell:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install CSpell
+        run: |
+          npm install -g cspell
+          npm install -g @cspell/dict-python
+
+      - name: Run CSpell
+        run: |
+          cspell \
+            --no-progress \
+            --no-summary \
+            --config .cspell/cspell.json \
+            **/*.hs \
+            **/*.md \
+            **/*.json \
+            **/*.toml \
+            **/*.yml \
+            **/*.yaml

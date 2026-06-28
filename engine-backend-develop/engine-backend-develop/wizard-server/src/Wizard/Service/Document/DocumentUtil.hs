@@ -1,0 +1,46 @@
+module Wizard.Service.Document.DocumentUtil where
+
+import Data.Hashable
+import qualified Data.Map.Strict as M
+import qualified Data.UUID as U
+
+import Shared.KnowledgeModel.Model.KnowledgeModel.Event.KnowledgeModelEvent
+import Wizard.Api.Resource.Document.DocumentDTO
+import Wizard.Api.Resource.User.UserDTO
+import Wizard.Database.DAO.Tenant.Config.TenantConfigSubmissionDAO
+import Wizard.Model.Context.AppContext
+import Wizard.Model.Document.Document
+import Wizard.Model.Document.DocumentList
+import Wizard.Model.Project.Project
+import Wizard.Model.Project.ProjectReply
+import Wizard.Model.Project.Version.ProjectVersion
+import Wizard.Model.Tenant.Config.TenantConfig
+import Wizard.Service.Document.DocumentMapper
+import Wizard.Service.Submission.SubmissionService
+
+enhanceDocument :: DocumentList -> AppContextM DocumentDTO
+enhanceDocument doc = do
+  tcSubmission <- findTenantConfigSubmission
+  submissions <-
+    if tcSubmission.enabled
+      then getSubmissionsForDocument doc.uuid
+      else return []
+  return $ toDTO doc submissions
+
+filterAlreadyDoneDocument :: U.UUID -> U.UUID -> Document -> Bool
+filterAlreadyDoneDocument documentTemplateUuid formatUuid doc =
+  (doc.state == DoneDocumentState || doc.state == ErrorDocumentState) && Just doc.documentTemplateUuid == Just documentTemplateUuid && Just doc.formatUuid == Just formatUuid
+
+computeHash :: [KnowledgeModelEvent] -> Project -> [ProjectVersion] -> Maybe U.UUID -> M.Map String Reply -> TenantConfigOrganization -> Maybe UserDTO -> Int
+computeHash kmEditorEvents project versions phaseUuid replies tcOrganization mCurrentUser =
+  sum
+    [ hash kmEditorEvents
+    , hash project.name
+    , hash project.description
+    , hash versions
+    , hash project.projectTags
+    , maybe 0 hash phaseUuid
+    , hash . M.toList $ replies
+    , hash tcOrganization
+    , maybe 0 hash mCurrentUser
+    ]

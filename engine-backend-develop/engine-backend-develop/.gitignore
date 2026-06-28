@@ -1,0 +1,12 @@
+.stack-work
+lib/
+dist/
+dist
+*.cabal
+
+application.yml
+application-test.yml
+integration.yml
+integration-test.yml
+build-info.yml
+config/build-info-test.yml

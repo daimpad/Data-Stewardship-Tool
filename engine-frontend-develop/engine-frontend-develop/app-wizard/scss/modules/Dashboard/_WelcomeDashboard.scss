@@ -1,0 +1,10 @@
+.WelcomeDashboard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    svg {
+        width: 25rem;
+        margin: 1.5rem 0;
+    }
+}

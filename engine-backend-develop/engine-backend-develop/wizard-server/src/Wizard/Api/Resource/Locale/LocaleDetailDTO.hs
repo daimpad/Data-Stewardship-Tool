@@ -1,0 +1,30 @@
+module Wizard.Api.Resource.Locale.LocaleDetailDTO where
+
+import Data.Time
+import qualified Data.UUID as U
+import GHC.Generics
+
+import Shared.Common.Api.Resource.Version.VersionDTO
+import Wizard.Model.Registry.RegistryOrganization
+
+data LocaleDetailDTO = LocaleDetailDTO
+  { uuid :: U.UUID
+  , name :: String
+  , description :: String
+  , code :: String
+  , organizationId :: String
+  , localeId :: String
+  , version :: String
+  , defaultLocale :: Bool
+  , license :: String
+  , readme :: String
+  , recommendedAppVersion :: String
+  , enabled :: Bool
+  , versions :: [VersionDTO]
+  , remoteLatestVersion :: Maybe String
+  , organization :: Maybe RegistryOrganization
+  , registryLink :: Maybe String
+  , createdAt :: UTCTime
+  , updatedAt :: UTCTime
+  }
+  deriving (Show, Eq, Generic)

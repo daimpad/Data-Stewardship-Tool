@@ -1,0 +1,210 @@
+module Wizard.Localization.Messages.Public where
+
+import Data.Maybe (fromMaybe)
+
+import Shared.Common.Model.Localization.LocaleRecord
+
+-- --------------------------------------
+-- VALIDATION
+-- --------------------------------------
+-- Uniqueness
+_ERROR_VALIDATION__TENANT_ID_UNIQUENESS =
+  LocaleRecord "error.validation.tenant_id_uniqueness" "Provided tenantId is already used" []
+
+_ERROR_VALIDATION__DOC_TML_FILE_OR_ASSET_UNIQUENESS =
+  LocaleRecord
+    "error.validation.doc_tml_file_or_asset_uniqueness"
+    "DocumentTemplate file or asset must have unique filename across the template"
+    []
+
+_ERROR_VALIDATION__KM_MIGRATION_UNIQUENESS =
+  LocaleRecord "error.validation.km_migration_uniqueness" "Migration of Knowledge Model already exists" []
+
+_ERROR_VALIDATION__PROJECT_MIGRATION_UNIQUENESS =
+  LocaleRecord "error.validation.project_migration_uniqueness" "Project Migration already exists" []
+
+_ERROR_VALIDATION__USER_EMAIL_UNIQUENESS email =
+  LocaleRecord "error.validation.user_email_uniqueness" "User (email: '%s') already exists" [email]
+
+-- Absence
+_ERROR_VALIDATION__TENANT_ABSENCE host = LocaleRecord "error.validation.tenant_absence" "Tenant ('%s') doesn't exist" [host]
+
+_ERROR_VALIDATION__KM_EDITOR_PREVIOUS_PKG_ABSENCE =
+  LocaleRecord "error.validation.km_editor_previous_pkg_absence" "Knowledge Model Editor has to be based on a package" []
+
+_ERROR_VALIDATION__INTEGRATION_ABSENCE =
+  LocaleRecord "error.validation.integration_absence" "Desired integrations doesn't exist" []
+
+_ERROR_VALIDATION__PREVIOUS_PKG_ABSENCE =
+  LocaleRecord "error.validation.previous_pkg_absence" "Previous package doesn't exist" []
+
+_ERROR_VALIDATION__QUESTION_ABSENCE =
+  LocaleRecord "error.validation.question_absence" "Desired question doesn't exist" []
+
+_ERROR_VALIDATION__TEMPLATE_ABSENCE = LocaleRecord "error.validation.template_absence" "DocumentTemplate doesn't exist" []
+
+_ERROR_VALIDATION__USER_ABSENCE userUuid =
+  LocaleRecord "error.validation.user_absence" "User ('%s') doesn't exist" [userUuid]
+
+_ERROR_VALIDATION__TOKEN_ABSENCE tokenUuid =
+  LocaleRecord "error.validation.token_absence" "Token ('%s') doesn't exist" [tokenUuid]
+
+-- Delete
+_ERROR_VALIDATION__TML_CANT_BE_DELETED_BECAUSE_IT_IS_USED_BY_SOME_OTHER_ENTITY tmlId target =
+  LocaleRecord "error.validation.tml_deletion" "DocumentTemplate '%s' can't be deleted. It's used by some %s" [tmlId, target]
+
+-- Unsupported version
+_ERROR_VALIDATION__PKG_UNSUPPORTED_METAMODEL_VERSION pkgMetamodelVersion appPkgMetamodelVersion =
+  LocaleRecord
+    "error.validation.pkg_unsupported_metamodel_version"
+    "Package contains unsupported version of metamodel (pkg metamodel version: '%s', application metamodel version: '%s')"
+    [show pkgMetamodelVersion, show appPkgMetamodelVersion]
+
+-- Unsupported State
+_ERROR_VALIDATION__DOC_TML_UNSUPPORTED_STATE tmlId phase =
+  LocaleRecord "error.validation.doc_tml_unsupported_state" "You can not move '%s' into the following phase: %s" [tmlId, phase]
+
+-- Project File
+_ERROR_VALIDATION__PROJECT_FILE_SIZE_EXCEEDS_LIMIT fileSize maxFileSize =
+  LocaleRecord "error.validation.project_file_size_exceeds_limit" "File exceeds the maximum allowed size (file: %s, maximum: %s)" [show fileSize, show maxFileSize]
+
+_ERROR_VALIDATION__PROJECT_FILE_QUESTION_ABSENCE_OR_WRONG_TYPE =
+  LocaleRecord "error.validation.project_file_question_absence_or_wrong_type" "The question either doesn't exist or is not a File Question" []
+
+-- --------------------------------------
+-- SERVICE
+-- --------------------------------------
+_ERROR_SERVICE_DOCUMENT__TEMPLATE_OR_FORMAT_NOT_SET_UP =
+  LocaleRecord "error.service.template.template_or_format_not_set_up" "DocumentTemplate or format is not set up" []
+
+_ERROR_SERVICE_DOCUMENT__PROJECT_OR_FORMAT_NOT_SET_UP =
+  LocaleRecord "error.service.template.project_or_format_not_set_up" "Project or format is not set up" []
+
+-- Auth
+_ERROR_SERVICE_AUTH__SERVICE_NOT_DEFINED authId =
+  LocaleRecord "error.service.auth.service_not_defined" "Service '%s' is not defined" [authId]
+
+_ERROR_VALIDATION__USER_EMAIL_FROM_IDP_CANNOT_BE_CHANGED =
+  LocaleRecord "error.validation.user_email_from_idp_cannot_be_changed" "Email provided by the OpenID provider cannot be changed" []
+
+-- Knowledge Model Editor
+_ERROR_SERVICE_KNOWLEDGE_MODEL_EDITOR__KM_MIGRATION_EXISTS =
+  LocaleRecord "error.service.knowledge_model_editor.km_migration_exists" "You can't publish the KM editor when there is ongoing KM migration" []
+
+_ERROR_SERVICE_KNOWLEDGE_MODEL_EDITOR__COLLABORATION__FORCE_DISCONNECT projectUuid =
+  LocaleRecord
+    "error.service.knowledge_model_editor.collaboration.force_disconnect"
+    "Knowledge Model Editor ('%s') dramatically changed its state. Therefore, users has to be disconnected"
+    [projectUuid]
+
+-- Locale Bundle
+_ERROR_SERVICE_LB__PULL_NON_EXISTING_LOCALE lclId =
+  LocaleRecord "error.service.lb.pull_non_existing_locale" "Desired locale ('%s') wasn't found in Registry" [lclId]
+
+-- Migration / KnowledgeModel
+_ERROR_SERVICE_MIGRATION_KM__TARGET_PKG_IS_NOT_HIGHER =
+  LocaleRecord
+    "error.service.migration.km.target_pkg_is_not_higher"
+    "You have to choose a knowledge model which is newer than current knowledge model"
+    []
+
+_ERROR_SERVICE_MIGRATION_KM__EDITOR_MISSING_MERGE_CHECKPOINT_PACKAGE_ID =
+  LocaleRecord
+    "error.service.migration.km.editor_missing_merge_checkpoint_package_id"
+    "Knowledge Model Editor is missing some metadata ('mergeCheckpointPackageId')"
+    []
+
+_ERROR_SERVICE_MIGRATION_KM__EDITOR_MISSING_FORK_OF_PACKAGE_ID =
+  LocaleRecord
+    "error.service.migration.km.editor_missing_fork_of_package_id"
+    "Knowledge Model Editor is missing some metadata ('forkOfPackageId')"
+    []
+
+_ERROR_SERVICE_MIGRATION_KM__NO_CONFLICTS_TO_SOLVE =
+  LocaleRecord
+    "error.service.migration.km.no_conflicts_to_solve"
+    "You can't solve conflicts because there are no conflicts"
+    []
+
+_ERROR_SERVICE_MIGRATION_KM__NO_EVENTS_IN_TARGET_PKG_EVENT_QUEUE =
+  LocaleRecord "error.service.migration.km.no_events_in_target_pkg_event_queue" "There no more events to solve" []
+
+_ERROR_SERVICE_MIGRATION_KM__EVENT_UUIDS_MISMATCH =
+  LocaleRecord
+    "error.service.migration.km.event_uuids_mismatch"
+    "There is a problem with an event metadata (mismatch in events' uuids)"
+    []
+
+-- Package
+_ERROR_SERVICE_PKG__IMPORT_PREVIOUS_PKG_AT_FIRST previousPkgId pkgId =
+  LocaleRecord
+    "error.service.pkg.import_previous_pkg_at_first"
+    "The knowledge model ('%s') depends on '%s'. Therefore, you should import the knowledge model '%s' at first."
+    [pkgId, previousPkgId, previousPkgId]
+
+-- Knowledge Model Bundle
+_ERROR_SERVICE_PB__PULL_NON_EXISTING_PKG pkgId =
+  LocaleRecord
+    "error.service.pb.pull_non_existing_pkg"
+    "Desired knowledge model ('%s') wasn't found in Registry"
+    [pkgId]
+
+-- Project
+_ERROR_SERVICE_PROJECT__PROJECT_CANT_BE_DELETED_BECAUSE_IT_IS_USED_IN_MIGRATION =
+  LocaleRecord
+    "error.service.project.project_cant_be_deleted_because_it_is_used_in_migration"
+    "Project can't be deleted because it's used in some project migration"
+    []
+
+_ERROR_SERVICE_PROJECT_COLLABORATION__FORCE_DISCONNECT projectUuid =
+  LocaleRecord
+    "error.service.project.collaboration.force_disconnect"
+    "Project ('%s') dramatically changed its state. Therefore, users has to be disconnected"
+    [projectUuid]
+
+_ERROR_SERVICE_PROJECT_VERSION__NON_EXISTENT_EVENT_UUID eventUuid =
+  LocaleRecord
+    "error.service.project.version.non_existent_event_uuid"
+    "You can't create version for non-existent event (eventUuid: '%s')"
+    [eventUuid]
+
+_ERROR_SERVICE_PROJECT_VERSION__VERSION_UNIQUENESS eventUuid =
+  LocaleRecord
+    "error.service.project.version.version_uniqueness"
+    "There is already a version for the event (eventUuid: '%s')"
+    [eventUuid]
+
+_ERROR_SERVICE_PROJECT__UNABLE_TO_GENERATE_DOCUMENT_PREVIEW workerLog =
+  LocaleRecord "error.service.project.unable_to_generate_document_preview" "%s" [fromMaybe "no log provided" workerLog]
+
+-- DocumentTemplate Bundle
+_ERROR_SERVICE_TB__PULL_NON_EXISTING_TML tmlId =
+  LocaleRecord "error.service.tb.pull_non_existing_tml" "Desired template ('%s') wasn't found in Registry" [tmlId]
+
+-- TypeHint
+_ERROR_SERVICE_TYPEHINT__BAD_TYPE_OF_QUESTION =
+  LocaleRecord "error.service.type_hint.bad_type_of_question" "Desired question has to be integration question" []
+
+_ERROR_SERVICE_TYPEHINT__BAD_TYPE_OF_INTEGRATION =
+  LocaleRecord "error.service.type_hint.bad_type_of_integration" "Desired integration has to be API integration" []
+
+_ERROR_SERVICE_TYPEHINT__INTEGRATION_RETURNS_ERROR =
+  LocaleRecord "error.service.type_hint.integration_request_failed" "Integration request failed" []
+
+_ERROR_VALIDATION__USER_ROLE_NAME_EMPTY =
+  LocaleRecord "error.validation.role_name_empty" "Role name cannot be empty" []
+
+_ERROR_VALIDATION__USER_ROLE_ADMIN_CANNOT_BE_CHANGED =
+  LocaleRecord "error.validation.role_admin_cannot_be_changed" "The admin role cannot be changed" []
+
+_ERROR_VALIDATION__USER_ROLE_ADMIN_CANNOT_BE_DELETED =
+  LocaleRecord "error.validation.role_admin_cannot_be_deleted" "The admin role cannot be deleted" []
+
+_ERROR_VALIDATION__USER_ROLE_IN_USE =
+  LocaleRecord "error.validation.role_in_use" "The role cannot be deleted because it is assigned to users" []
+
+_ERROR_VALIDATION__USER_ROLE_IS_DEFAULT =
+  LocaleRecord "error.validation.role_is_default" "The role cannot be deleted because it is configured as the default role for new users" []
+
+_ERROR_VALIDATION__USER_ROLE_INVALID_PERMISSION perm =
+  LocaleRecord "error.validation.role_invalid_permission" "Permission '%s' is not a valid assignable permission" [perm]

@@ -1,0 +1,145 @@
+module Wizard.Specs.API.Document.Detail_DELETE (
+  detail_DELETE,
+) where
+
+import Data.Aeson (encode)
+import Network.HTTP.Types
+import Network.Wai (Application)
+import Test.Hspec
+import Test.Hspec.Wai hiding (shouldRespondWith)
+import Test.Hspec.Wai.Matcher
+
+import Shared.Common.Api.Resource.Error.ErrorJM ()
+import Shared.Common.Localization.Messages.Public
+import Shared.Common.Model.Error.Error
+import Wizard.Database.DAO.Document.DocumentDAO
+import Wizard.Database.DAO.Project.ProjectDAO
+import Wizard.Database.Migration.Development.Document.Data.Documents
+import Wizard.Database.Migration.Development.Document.DocumentMigration as DOC_Migration
+import qualified Wizard.Database.Migration.Development.DocumentTemplate.DocumentTemplateMigration as TML_Migration
+import Wizard.Database.Migration.Development.Project.Data.Projects
+import Wizard.Database.Migration.Development.Project.ProjectMigration as PRJ_Migration
+import qualified Wizard.Database.Migration.Development.User.UserMigration as U_Migration
+import Wizard.Model.Context.AppContext
+import Wizard.Model.Document.Document
+import Wizard.Model.Project.Project
+
+import SharedTest.Specs.API.Common
+import Wizard.Specs.API.Common
+import Wizard.Specs.Common
+
+-- ------------------------------------------------------------------------
+-- DELETE /wizard-api/documents/{documentId}
+-- ------------------------------------------------------------------------
+detail_DELETE :: AppContext -> SpecWith ((), Application)
+detail_DELETE appContext =
+  describe "DELETE /wizard-api/documents/{documentId}" $ do
+    test_204 appContext
+    test_401 appContext
+    test_403 appContext
+    test_404 appContext
+
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+reqMethod = methodDelete
+
+reqUrl = "/wizard-api/documents/264ca352-1a99-4ffd-860e-32aee9a98428"
+
+reqHeadersT authHeader = authHeader
+
+reqBody = ""
+
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+test_204 appContext = do
+  create_test_204 "HTTP 204 NO CONTENT (Owner, Private)" appContext project1 [reqAuthHeader]
+  create_test_204 "HTTP 204 NO CONTENT (Non-Owner, VisibleEdit)" appContext project3 [reqNonAdminAuthHeader]
+
+create_test_204 title appContext project authHeader =
+  it title $
+    -- GIVEN: Prepare request
+    do
+      let reqHeaders = reqHeadersT authHeader
+      -- AND: Prepare expectation
+      let expStatus = 204
+      let expHeaders = resCtHeader : resCorsHeaders
+      let expBody = ""
+      -- AND: Run migrations
+      runInContextIO U_Migration.runMigration appContext
+      runInContextIO TML_Migration.runMigration appContext
+      runInContextIO PRJ_Migration.runMigration appContext
+      runInContextIO (insertProject project10) appContext
+      runInContextIO DOC_Migration.runMigration appContext
+      runInContextIO (deleteDocumentByUuid doc1.uuid) appContext
+      runInContextIO (insertDocument (doc1 {projectUuid = Just project.uuid})) appContext
+      -- WHEN: Call API
+      response <- request reqMethod reqUrl reqHeaders reqBody
+      -- THEN: Compare response with expectation
+      let responseMatcher =
+            ResponseMatcher {matchHeaders = expHeaders, matchStatus = expStatus, matchBody = bodyEquals expBody}
+      response `shouldRespondWith` responseMatcher
+      -- AND: Find result in DB and compare with expectation state
+      assertCountInDB findDocuments appContext 2
+
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+test_401 appContext = createAuthTest reqMethod reqUrl [reqCtHeader] reqBody
+
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+test_403 appContext = do
+  create_test_403
+    "HTTP 403 FORBIDDEN (Non-Owner, Private)"
+    appContext
+    project1
+    [reqNonAdminAuthHeader]
+    (_ERROR_VALIDATION__FORBIDDEN "Edit Project")
+  create_test_403
+    "HTTP 403 FORBIDDEN (Non-Owner, VisibleView)"
+    appContext
+    project2
+    [reqNonAdminAuthHeader]
+    (_ERROR_VALIDATION__FORBIDDEN "Edit Project")
+
+create_test_403 title appContext project authHeader errorMessage =
+  it title $
+    -- GIVEN: Prepare request
+    do
+      let reqHeaders = reqHeadersT authHeader
+      -- AND: Prepare expectation
+      let expStatus = 403
+      let expHeaders = resCtHeader : resCorsHeaders
+      let expDto = ForbiddenError errorMessage
+      let expBody = encode expDto
+      -- AND: Run migrations
+      runInContextIO U_Migration.runMigration appContext
+      runInContextIO TML_Migration.runMigration appContext
+      runInContextIO PRJ_Migration.runMigration appContext
+      runInContextIO DOC_Migration.runMigration appContext
+      runInContextIO (insertProject project7) appContext
+      runInContextIO (deleteDocumentByUuid doc1.uuid) appContext
+      runInContextIO (insertDocument (doc1 {projectUuid = Just project.uuid})) appContext
+      -- WHEN: Call API
+      response <- request reqMethod reqUrl reqHeaders reqBody
+      -- THEN: Compare response with expectation
+      let responseMatcher =
+            ResponseMatcher {matchHeaders = expHeaders, matchStatus = expStatus, matchBody = bodyEquals expBody}
+      response `shouldRespondWith` responseMatcher
+      -- AND: Find result in DB and compare with expectation state
+      assertCountInDB findDocuments appContext 3
+
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+test_404 appContext =
+  createNotFoundTest'
+    reqMethod
+    "/wizard-api/documents/dc9fe65f-748b-47ec-b30c-d255bbac64a0"
+    (reqHeadersT [reqAuthHeader])
+    reqBody
+    "document"
+    [("uuid", "dc9fe65f-748b-47ec-b30c-d255bbac64a0")]

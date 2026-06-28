@@ -1,0 +1,4641 @@
+module Wizard.Components.Questionnaire exposing
+    ( ActivePage(..)
+    , Config
+    , Context
+    , FeaturesConfig
+    , Model
+    , Msg(..)
+    , QuestionnaireRenderer
+    , TypeHints
+    , TypeHintsLegacy
+    , addComment
+    , addEvent
+    , addFile
+    , assignCommentThread
+    , clearReply
+    , deleteComment
+    , deleteCommentThread
+    , editComment
+    , init
+    , initSimple
+    , reopenCommentThread
+    , resetUserSuggestionDropdownModels
+    , resolveCommentThread
+    , setActiveChapterUuid
+    , setLabels
+    , setPhaseUuid
+    , setReply
+    , subscriptions
+    , update
+    , updateWithQuestionnaireData
+    , view
+    )
+
+import ActionResult exposing (ActionResult(..))
+import Bootstrap.Button as Button
+import Bootstrap.Dropdown as Dropdown
+import Browser.Events
+import CharIdentifier
+import Common.Api.ApiError as ApiError exposing (ApiError)
+import Common.Api.Models.Pagination exposing (Pagination)
+import Common.Api.Models.UserSuggestion exposing (UserSuggestion)
+import Common.Components.ActionResultBlock as ActionResultBlock
+import Common.Components.Badge as Badge
+import Common.Components.DatePicker as DatePicker
+import Common.Components.FileDownloader as FileDownloader
+import Common.Components.Flash as Flash
+import Common.Components.FontAwesome exposing (fa, faAdd, faClose, faDelete, faError, faInfo, faListingActions, faNext, faPrev, faQuestionnaireClearAnswer, faQuestionnaireComments, faQuestionnaireCommentsResolve, faQuestionnaireCopyLink, faQuestionnaireExpand, faQuestionnaireFeedback, faQuestionnaireFollowUpsIndication, faQuestionnaireItemCollapse, faQuestionnaireItemCollapseAll, faQuestionnaireItemExpand, faQuestionnaireItemExpandAll, faQuestionnaireItemMoveDown, faQuestionnaireItemMoveUp, faQuestionnaireShrink, faRemove, faSearch, faSpinner, faSuccess, fas)
+import Common.Components.Modal as Modal
+import Common.Components.Tooltip exposing (tooltip, tooltipLeft, tooltipRight)
+import Common.Components.Undraw as Undraw
+import Common.Ports.Copy as Copy
+import Common.Ports.Dom as Dom
+import Common.Ports.Dom.ElementScrollTop as ElementScrollTop
+import Common.Ports.LocalStorage as LocalStorage
+import Common.Utils.ByteUnits as ByteUnits
+import Common.Utils.FileIcon as FileIcon
+import Common.Utils.KnowledgeModelUtils as KnowledgeModelUtils
+import Common.Utils.Markdown as Markdown
+import Common.Utils.RegexPatterns as RegexPatterns
+import Common.Utils.ShortcutUtils as Shortcut
+import Common.Utils.TimeDistance as TimeDistance
+import Common.Utils.TimeUtils as TimeUtils
+import Debounce exposing (Debounce)
+import Dict exposing (Dict)
+import Flip exposing (flip)
+import Gettext exposing (gettext, ngettext)
+import Html exposing (Html, a, button, div, h2, h5, i, input, label, li, option, p, select, small, span, strong, text, ul)
+import Html.Attributes exposing (attribute, checked, class, classList, disabled, id, name, placeholder, selected, style, type_, value)
+import Html.Attributes.Extensions exposing (dataCy, dataTour)
+import Html.Events exposing (onBlur, onCheck, onClick, onFocus, onInput, onMouseDown, onMouseOut)
+import Html.Events.Extra exposing (onChange)
+import Html.Extra as Html
+import Html.Keyed
+import Html.Lazy as Lazy
+import Json.Decode as D exposing (decodeValue)
+import Json.Decode.Extra as D
+import Json.Encode as E
+import List.Extensions as List
+import List.Extra as List
+import Maybe.Extra as Maybe
+import Random exposing (Seed)
+import Regex
+import Roman
+import Set exposing (Set)
+import Shortcut
+import SplitPane
+import String.Format as String
+import Task.Extra as Task
+import Time
+import Time.Distance as Time
+import Uuid exposing (Uuid)
+import Uuid.Extra as Uuid
+import Wizard.Api.Models.BootstrapConfig.UserConfig as UserConfig
+import Wizard.Api.Models.Event exposing (Event)
+import Wizard.Api.Models.KnowledgeModel as KnowledgeModel exposing (KnowledgeModel)
+import Wizard.Api.Models.KnowledgeModel.Answer exposing (Answer)
+import Wizard.Api.Models.KnowledgeModel.Chapter exposing (Chapter)
+import Wizard.Api.Models.KnowledgeModel.Choice exposing (Choice)
+import Wizard.Api.Models.KnowledgeModel.Integration exposing (Integration(..))
+import Wizard.Api.Models.KnowledgeModel.Integration.ApiIntegrationData exposing (ApiIntegrationData)
+import Wizard.Api.Models.KnowledgeModel.Phase exposing (Phase)
+import Wizard.Api.Models.KnowledgeModel.Question as Question exposing (Question(..))
+import Wizard.Api.Models.KnowledgeModel.Question.QuestionValidation as QuestionValidation
+import Wizard.Api.Models.KnowledgeModel.Question.QuestionValueType exposing (QuestionValueType(..))
+import Wizard.Api.Models.ProjectCommon exposing (ProjectCommon)
+import Wizard.Api.Models.ProjectDetail.Comment as Comment exposing (Comment)
+import Wizard.Api.Models.ProjectDetail.CommentThread as CommentThread exposing (CommentThread)
+import Wizard.Api.Models.ProjectDetail.ProjectEvent exposing (ProjectEvent)
+import Wizard.Api.Models.ProjectDetail.Reply exposing (Reply)
+import Wizard.Api.Models.ProjectDetail.Reply.ReplyValue as ReplyValue exposing (ReplyValue(..))
+import Wizard.Api.Models.ProjectDetail.Reply.ReplyValue.IntegrationReplyType exposing (IntegrationReplyType(..))
+import Wizard.Api.Models.ProjectFileSimple exposing (ProjectFileSimple)
+import Wizard.Api.Models.ProjectQuestionnaire as ProjectQuestionnaire exposing (ProjectQuestionnaire)
+import Wizard.Api.Models.ProjectVersion exposing (ProjectVersion)
+import Wizard.Api.Models.TypeHint exposing (TypeHint)
+import Wizard.Api.Models.TypeHintLegacy exposing (TypeHintLegacy)
+import Wizard.Api.Models.TypeHintRequest as TypeHintRequest
+import Wizard.Api.Models.User as User
+import Wizard.Api.Models.WebSockets.ProjectMessage.SetProjectData exposing (SetProjectData)
+import Wizard.Api.ProjectFiles as ProjectFilesApi
+import Wizard.Api.Projects as ProjectsApi
+import Wizard.Api.TypeHints as TypeHintsApi
+import Wizard.Components.Html exposing (illustratedMessage, resizableTextarea)
+import Wizard.Components.PluginModal as PluginModal
+import Wizard.Components.PluginView as PluginView
+import Wizard.Components.Questionnaire.DeleteVersionModal as DeleteVersionModal
+import Wizard.Components.Questionnaire.FeedbackModal as FeedbackModal
+import Wizard.Components.Questionnaire.FileUploadModal as FileUploadModal
+import Wizard.Components.Questionnaire.History as History
+import Wizard.Components.Questionnaire.NavigationTree as NavigationTree
+import Wizard.Components.Questionnaire.QuestionnaireViewSettings as QuestionnaireViewSettings exposing (QuestionnaireViewSettings)
+import Wizard.Components.Questionnaire.RightPanel as RightPanel exposing (RightPanel)
+import Wizard.Components.Questionnaire.SearchPanel as SearchPanel
+import Wizard.Components.Questionnaire.UserSuggestionDropdown as UserSuggestionDropdown
+import Wizard.Components.Questionnaire.VersionModal as VersionModal
+import Wizard.Components.Tag as Tag
+import Wizard.Components.UserIcon as UserIcon
+import Wizard.Data.AppState as AppState exposing (AppState)
+import Wizard.Pages.Projects.Common.ProjectTodoGroup as ProjectTodoGroup
+import Wizard.Plugins.Plugin as Plugin exposing (ProjectQuestionActionConnectorType(..))
+import Wizard.Plugins.PluginElement as PluginElement
+import Wizard.Routes as Routes
+import Wizard.Routing as Routing
+import Wizard.Utils.Feature as Feature
+import Wizard.Utils.HtmlAttributesUtils exposing (linkToAttributes)
+
+
+
+-- MODEL
+
+
+type alias Model =
+    { uuid : Uuid
+    , mbCommentThreadUuid : Maybe Uuid
+    , activePage : ActivePage
+    , rightPanel : RightPanel
+    , questionnaire : ProjectQuestionnaire
+    , knowledgeModelParentMap : KnowledgeModel.ParentMap
+    , projectEvents : ActionResult (List ProjectEvent)
+    , projectEventsExtraLoading : ActionResult ()
+    , projectEventsPage : Int
+    , projectEventsLoadMore : Bool
+    , projectVersions : ActionResult (List ProjectVersion)
+    , phaseModalOpen : Bool
+    , removeItem : Maybe ( String, String )
+    , deleteFile : Maybe ( Uuid, String )
+    , deletingFile : ActionResult ()
+    , typeHints : Maybe TypeHints
+    , typeHintsDebounce : Debounce ( List String, String, String )
+    , typeHintsLegacy : Maybe TypeHintsLegacy
+    , typeHintsLegacyDebounce : Debounce ( List String, String, String )
+    , feedbackModalModel : FeedbackModal.Model
+    , fileUploadModalModel : FileUploadModal.Model
+    , viewSettings : QuestionnaireViewSettings
+    , viewSettingsDropdown : Dropdown.State
+    , historyModel : History.Model
+    , versionModalModel : VersionModal.Model
+    , deleteVersionModalModel : DeleteVersionModal.Model
+    , commentInputs : Dict String String
+    , commentEditInputs : Dict String String
+    , commentDeleting : Maybe Uuid
+    , commentDeletingListenClicks : Bool
+    , commentsViewResolved : Bool
+    , commentsViewPrivate : Bool
+    , commentDropdownStates : Dict String Dropdown.State
+    , splitPane : SplitPane.State
+    , pluginImportersDropdown : Dropdown.State
+    , pluginActionsDropdown : Dropdown.State
+    , collapsedItems : Set String
+    , recentlyCopied : Bool
+    , contentScrollTop : Maybe Int
+    , commentThreadsMap : Dict String (ActionResult (List CommentThread))
+    , userSuggestionDropdownModels : Dict String UserSuggestionDropdown.Model
+    , linkedItemsDropdownStates : Dict String Dropdown.State
+    , searchPanelModel : SearchPanel.Model
+    , mbHighlightedPath : Maybe String
+    , pluginProjectActionModal : PluginModal.Model ProjectCommon
+    , pluginProjectQuestionActionModal : PluginModal.Model ( ProjectCommon, Question, String )
+    }
+
+
+type alias TypeHintsLegacy =
+    { path : List String
+    , searchValue : String
+    , hints : ActionResult (List TypeHintLegacy)
+    }
+
+
+type alias TypeHints =
+    { path : List String
+    , searchValue : String
+    , hints : ActionResult (List TypeHint)
+    }
+
+
+type ActivePage
+    = PageNone
+    | PageChapter String
+
+
+initSimple : AppState -> ProjectQuestionnaire -> ( Model, Cmd Msg )
+initSimple appState questionnaire =
+    init appState questionnaire Nothing Nothing
+
+
+init : AppState -> ProjectQuestionnaire -> Maybe String -> Maybe Uuid -> ( Model, Cmd Msg )
+init appState questionnaire mbPath mbCommentThreadUuid =
+    let
+        mbChapterUuid =
+            List.head questionnaire.knowledgeModel.chapterUuids
+
+        activePage =
+            Maybe.unwrap PageNone PageChapter mbChapterUuid
+
+        defaultModel =
+            { uuid = questionnaire.uuid
+            , mbCommentThreadUuid = mbCommentThreadUuid
+            , activePage = activePage
+            , rightPanel = RightPanel.None
+            , questionnaire = questionnaire
+            , knowledgeModelParentMap = KnowledgeModel.createParentMap questionnaire.knowledgeModel
+            , projectEvents = ActionResult.Unset
+            , projectEventsExtraLoading = ActionResult.Unset
+            , projectEventsPage = 0
+            , projectEventsLoadMore = False
+            , projectVersions = ActionResult.Unset
+            , phaseModalOpen = False
+            , removeItem = Nothing
+            , deleteFile = Nothing
+            , deletingFile = ActionResult.Unset
+            , typeHints = Nothing
+            , typeHintsDebounce = Debounce.init
+            , typeHintsLegacy = Nothing
+            , typeHintsLegacyDebounce = Debounce.init
+            , feedbackModalModel = FeedbackModal.init
+            , fileUploadModalModel = FileUploadModal.init questionnaire.uuid
+            , viewSettings = QuestionnaireViewSettings.default
+            , viewSettingsDropdown = Dropdown.initialState
+            , historyModel = History.init appState
+            , versionModalModel = VersionModal.init
+            , deleteVersionModalModel = DeleteVersionModal.init
+            , commentInputs = Dict.empty
+            , commentEditInputs = Dict.empty
+            , commentDeleting = Nothing
+            , commentDeletingListenClicks = False
+            , commentsViewResolved = False
+            , commentsViewPrivate = False
+            , commentDropdownStates = Dict.empty
+            , splitPane = SplitPane.init SplitPane.Horizontal |> SplitPane.configureSplitter (SplitPane.percentage 0.2 (Just ( 0.1, 0.7 )))
+            , pluginImportersDropdown = Dropdown.initialState
+            , pluginActionsDropdown = Dropdown.initialState
+            , collapsedItems = Set.empty
+            , recentlyCopied = False
+            , contentScrollTop = Nothing
+            , commentThreadsMap = Dict.empty
+            , userSuggestionDropdownModels = Dict.empty
+            , linkedItemsDropdownStates = Dict.empty
+            , searchPanelModel = SearchPanel.init
+            , mbHighlightedPath = Nothing
+            , pluginProjectActionModal = PluginModal.initialModel
+            , pluginProjectQuestionActionModal = PluginModal.initialModel
+            }
+
+        ( model, scrollCmd ) =
+            case ( mbPath, mbCommentThreadUuid ) of
+                ( Just path, Just _ ) ->
+                    ( defaultModel, Task.dispatch (OpenComments True path) )
+
+                ( Just path, Nothing ) ->
+                    handleScrollToPath defaultModel False path
+
+                _ ->
+                    ( defaultModel, Cmd.none )
+
+        rightPanelCmd =
+            case mbCommentThreadUuid of
+                Just _ ->
+                    Cmd.none
+
+                _ ->
+                    LocalStorage.getItem (localStorageRightPanelKey questionnaire.uuid)
+    in
+    ( model
+    , Cmd.batch
+        [ scrollCmd
+        , LocalStorage.getItem (localStorageCollapsedItemKey questionnaire.uuid)
+        , LocalStorage.getItem (localStorageViewResolvedKey questionnaire.uuid)
+        , LocalStorage.getItem (localStorageNamedOnlyKey questionnaire.uuid)
+        , LocalStorage.getItem localStorageViewSettingsKey
+        , rightPanelCmd
+        ]
+    )
+
+
+addEvent : ProjectEvent -> Model -> Model
+addEvent event model =
+    { model | projectEvents = ActionResult.map (\events -> events ++ [ event ]) model.projectEvents }
+
+
+setActiveChapterUuid : String -> Model -> Model
+setActiveChapterUuid uuid model =
+    { model | activePage = PageChapter uuid }
+
+
+updateWithQuestionnaireData : AppState -> SetProjectData -> Model -> Model
+updateWithQuestionnaireData appState data model =
+    let
+        updatedQuestionnaire =
+            ProjectQuestionnaire.updateWithQuestionnaireData data model.questionnaire
+
+        setNewPanel panel allowed =
+            if allowed then
+                panel
+
+            else
+                RightPanel.None
+
+        rightPanel =
+            case model.rightPanel of
+                RightPanel.TODOs ->
+                    setNewPanel RightPanel.TODOs <|
+                        Feature.projectTodos appState updatedQuestionnaire
+
+                RightPanel.VersionHistory ->
+                    setNewPanel RightPanel.VersionHistory <|
+                        Feature.projectVersionHistory appState updatedQuestionnaire
+
+                RightPanel.CommentsOverview ->
+                    setNewPanel RightPanel.CommentsOverview <|
+                        Feature.projectCommentAdd appState updatedQuestionnaire
+
+                RightPanel.Comments path ->
+                    setNewPanel (RightPanel.Comments path) <|
+                        Feature.projectCommentAdd appState updatedQuestionnaire
+
+                _ ->
+                    model.rightPanel
+    in
+    { model
+        | questionnaire = updatedQuestionnaire
+        , rightPanel = rightPanel
+    }
+
+
+setPhaseUuid : Maybe Uuid -> Model -> Model
+setPhaseUuid phaseUuid =
+    updateQuestionnaire <| ProjectQuestionnaire.setPhaseUuid phaseUuid
+
+
+setReply : String -> Reply -> Model -> Model
+setReply path reply =
+    updateQuestionnaire <| ProjectQuestionnaire.setReply path reply
+
+
+clearReply : String -> Model -> Model
+clearReply path =
+    updateQuestionnaire <| ProjectQuestionnaire.clearReplyValue path
+
+
+setLabels : String -> List String -> Model -> Model
+setLabels path value =
+    updateQuestionnaire <| ProjectQuestionnaire.setLabels path value
+
+
+resolveCommentThread : String -> Uuid -> Int -> Model -> Model
+resolveCommentThread path threadUuid commentCount model =
+    let
+        mapCommentThread commentThread =
+            { commentThread | resolved = True }
+    in
+    model
+        |> mapCommentThreads path (List.map (wrapMapCommentThread threadUuid mapCommentThread))
+        |> updateQuestionnaire (ProjectQuestionnaire.addResolvedCommentThreadToCount path threadUuid commentCount)
+
+
+reopenCommentThread : String -> Uuid -> Int -> Model -> Model
+reopenCommentThread path threadUuid commentCount model =
+    let
+        mapCommentThread commentThread =
+            { commentThread | resolved = False }
+    in
+    model
+        |> mapCommentThreads path (List.map (wrapMapCommentThread threadUuid mapCommentThread))
+        |> updateQuestionnaire (ProjectQuestionnaire.addReopenedCommentThreadToCount path threadUuid commentCount)
+
+
+deleteCommentThread : String -> Uuid -> Model -> Model
+deleteCommentThread path threadUuid model =
+    model
+        |> mapCommentThreads path (List.filter (\t -> t.uuid /= threadUuid))
+        |> updateQuestionnaire (ProjectQuestionnaire.removeCommentThreadFromCount path threadUuid)
+
+
+assignCommentThread : String -> Uuid -> Maybe UserSuggestion -> Model -> Model
+assignCommentThread path threadUuid mbUserSuggestion model =
+    let
+        mapCommentThread commentThread =
+            { commentThread | assignedTo = mbUserSuggestion }
+    in
+    model
+        |> mapCommentThreads path (List.map (wrapMapCommentThread threadUuid mapCommentThread))
+
+
+addComment : String -> Uuid -> Bool -> Comment -> Model -> Model
+addComment path threadUuid private comment model =
+    let
+        threadExists =
+            Dict.get path model.commentThreadsMap
+                |> Maybe.andThen ActionResult.toMaybe
+                |> Maybe.withDefault []
+                |> List.any (.uuid >> (==) threadUuid)
+
+        mapCommentThread commentThread =
+            { commentThread | comments = commentThread.comments ++ [ comment ] }
+
+        questionnaireWithThread =
+            if threadExists then
+                model
+
+            else
+                addCommentThread path threadUuid private comment model
+    in
+    questionnaireWithThread
+        |> mapCommentThreads path (List.map (wrapMapCommentThread threadUuid mapCommentThread))
+        |> updateQuestionnaire (ProjectQuestionnaire.addCommentCount path threadUuid)
+
+
+addCommentThread : String -> Uuid -> Bool -> Comment -> Model -> Model
+addCommentThread path threadUuid private comment model =
+    let
+        commentThread =
+            { uuid = threadUuid
+            , resolved = False
+            , comments = []
+            , private = private
+            , createdAt = comment.createdAt
+            , createdBy = comment.createdBy
+            , assignedTo = Nothing
+            }
+
+        commentThreads =
+            Dict.get path model.commentThreadsMap
+                |> Maybe.withDefault (Success [])
+
+        mapAddCommentThread originalCommentThreads =
+            originalCommentThreads ++ [ commentThread ]
+    in
+    { model | commentThreadsMap = Dict.insert path (ActionResult.map mapAddCommentThread commentThreads) model.commentThreadsMap }
+
+
+editComment : String -> Uuid -> Uuid -> Time.Posix -> String -> Model -> Model
+editComment path threadUuid commentUuid updatedAt newText =
+    let
+        mapComment comment =
+            if comment.uuid == commentUuid then
+                { comment | text = newText, updatedAt = updatedAt }
+
+            else
+                comment
+
+        mapCommentThread commentThread =
+            { commentThread | comments = List.map mapComment commentThread.comments }
+    in
+    mapCommentThreads path (List.map (wrapMapCommentThread threadUuid mapCommentThread))
+
+
+deleteComment : String -> Uuid -> Uuid -> Model -> Model
+deleteComment path threadUuid commentUuid model =
+    let
+        mapCommentThread commentThread =
+            { commentThread | comments = List.filter (\c -> c.uuid /= commentUuid) commentThread.comments }
+    in
+    model
+        |> mapCommentThreads path (List.map (wrapMapCommentThread threadUuid mapCommentThread))
+        |> updateQuestionnaire (ProjectQuestionnaire.subCommentCount path threadUuid)
+
+
+mapCommentThreads : String -> (List CommentThread -> List CommentThread) -> Model -> Model
+mapCommentThreads path map model =
+    let
+        mbCommentThreads =
+            Dict.get path model.commentThreadsMap
+                |> Maybe.map (ActionResult.map map)
+    in
+    case mbCommentThreads of
+        Just commentThreads ->
+            { model | commentThreadsMap = Dict.insert path commentThreads model.commentThreadsMap }
+
+        Nothing ->
+            model
+
+
+wrapMapCommentThread : Uuid -> (CommentThread -> CommentThread) -> CommentThread -> CommentThread
+wrapMapCommentThread threadUuid mapCommentThread commentThread =
+    if commentThread.uuid == threadUuid then
+        mapCommentThread commentThread
+
+    else
+        commentThread
+
+
+resetUserSuggestionDropdownModels : Model -> Model
+resetUserSuggestionDropdownModels model =
+    { model | userSuggestionDropdownModels = Dict.empty }
+
+
+updateQuestionnaire : (ProjectQuestionnaire -> ProjectQuestionnaire) -> Model -> Model
+updateQuestionnaire fn model =
+    { model | questionnaire = fn model.questionnaire }
+
+
+isQuestionDesirable : Model -> Question -> Bool
+isQuestionDesirable model =
+    Question.isDesirable model.questionnaire.knowledgeModel.phaseUuids
+        (Uuid.toString (Maybe.withDefault Uuid.nil model.questionnaire.phaseUuid))
+
+
+addFile : ProjectFileSimple -> Model -> Model
+addFile file model =
+    { model | questionnaire = ProjectQuestionnaire.addFile file model.questionnaire }
+
+
+type alias Config msg =
+    { features : FeaturesConfig
+    , renderer : QuestionnaireRenderer
+    , wrapMsg : Msg -> msg
+    , previewQuestionnaireEventMsg : Maybe (Uuid -> msg)
+    , revertQuestionnaireMsg : Maybe (ProjectEvent -> msg)
+    , isKmEditor : Bool
+    , projectCommon : Maybe ProjectCommon
+    }
+
+
+type alias FeaturesConfig =
+    { feedbackEnabled : Bool
+    , todosEnabled : Bool
+    , commentsEnabled : Bool
+    , pluginsEnabled : Bool
+    , readonly : Bool
+    , toolbarEnabled : Bool
+    , questionLinksEnabled : Bool
+    }
+
+
+type alias QuestionnaireRenderer =
+    { renderQuestionLabel : Question -> Html Msg
+    , renderQuestionDescription : QuestionnaireViewSettings -> Question -> Html Msg
+    , getQuestionExtraClass : Question -> Maybe String
+    , renderAnswerLabel : Answer -> Html Msg
+    , renderAnswerBadges : Bool -> Answer -> Html Msg
+    , renderAnswerAdvice : Answer -> Html Msg
+    , renderChoiceLabel : Choice -> Html Msg
+    }
+
+
+type alias Context =
+    { events : List Event
+    , kmEditorUuid : Maybe Uuid
+    }
+
+
+type QuestionViewState
+    = Default
+    | Answered
+    | Desirable
+
+
+localStorageViewSettingsKey : String
+localStorageViewSettingsKey =
+    "project-view-settings"
+
+
+localStorageCollapsedItemKey : Uuid -> String
+localStorageCollapsedItemKey uuid =
+    "project-" ++ Uuid.toString uuid ++ "-items"
+
+
+localStorageRightPanelKey : Uuid -> String
+localStorageRightPanelKey uuid =
+    "project-" ++ Uuid.toString uuid ++ "-right-panel"
+
+
+localStorageViewResolvedKey : Uuid -> String
+localStorageViewResolvedKey uuid =
+    "project-" ++ Uuid.toString uuid ++ "-view-resolved"
+
+
+localStorageNamedOnlyKey : Uuid -> String
+localStorageNamedOnlyKey uuid =
+    "project-" ++ Uuid.toString uuid ++ "-named-only"
+
+
+contentElementSelector : String
+contentElementSelector =
+    ".questionnaire__content"
+
+
+
+-- UPDATE
+
+
+type Msg
+    = SetActivePage ActivePage
+    | SetRightPanel RightPanel
+    | SetFullscreen Bool
+    | ScrollToPath String
+    | ScrollToQuestion String
+    | OpenChapter String
+    | ClearHighlight String
+    | UpdateContentScroll
+    | GotContentScroll E.Value
+    | ShowTypeHints (List String) Bool String String
+    | HideTypeHints
+    | TypeHintInput (List String) Bool Bool Reply
+    | TypeHintDebounceMsg Debounce.Msg
+    | TypeHintsLoaded (List String) String (Result ApiError (List TypeHint))
+    | ShowTypeHintsLegacy (List String) Bool String String
+    | HideTypeHintsLegacy
+    | TypeHintLegacyInput (List String) Bool Reply
+    | TypeHintLegacyDebounceMsg Debounce.Msg
+    | TypeHintsLegacyLoaded (List String) String (Result ApiError (List TypeHintLegacy))
+    | FeedbackModalMsg FeedbackModal.Msg
+    | FileUploadModalMsg FileUploadModal.Msg
+    | PhaseModalUpdate Bool (Maybe Uuid)
+    | SetReply String Reply
+    | SetFile String ProjectFileSimple
+    | ClearReply String
+    | AddItem String (List String)
+    | RemoveItem String String
+    | RemoveItemConfirm
+    | RemoveItemCancel
+    | DeleteFile Uuid String
+    | DeleteFileConfirm
+    | DeleteFileCompleted String (Result ApiError ())
+    | DeleteFileCancel
+    | DownloadFile Uuid
+    | FileDownloaderMsg FileDownloader.Msg
+    | MoveItemUp String String
+    | MoveItemDown String String
+    | SetLabels String (List String)
+    | ViewSettingsDropdownMsg Dropdown.State
+    | SetViewSettings QuestionnaireViewSettings
+    | LoadMoreQuestionnaireEvents
+    | GetQuestionnaireEventsCompleted Int (Result ApiError (Pagination ProjectEvent))
+    | GetQuestionnaireVersionsCompleted (Result ApiError (List ProjectVersion))
+    | HistoryMsg History.Msg
+    | VersionModalMsg VersionModal.Msg
+    | DeleteVersionModalMsg DeleteVersionModal.Msg
+    | CreateNamedVersion Uuid
+    | RenameVersion ProjectVersion
+    | DeleteVersion ProjectVersion
+    | AddQuestionnaireVersion ProjectVersion
+    | UpdateQuestionnaireVersion ProjectVersion
+    | DeleteQuestionnaireVersion ProjectVersion
+    | OpenComments Bool String
+    | CommentInput String (Maybe Uuid) String
+    | CommentSubmit String (Maybe Uuid) String Bool
+    | CommentDelete (Maybe Uuid)
+    | CommentDeleteListenClicks
+    | CommentDeleteSubmit String Uuid Uuid Bool
+    | CommentEditInput Uuid String
+    | CommentEditCancel Uuid
+    | CommentEditSubmit String Uuid Uuid String Bool
+    | CommentThreadDelete String CommentThread
+    | CommentThreadResolve String CommentThread
+    | CommentThreadReopen String CommentThread
+    | CommentThreadAssign String CommentThread (Maybe UserSuggestion)
+    | CommentsViewResolved Bool
+    | CommentsViewPrivate Bool
+    | CommentDropdownMsg String Dropdown.State
+    | SplitPaneMsg SplitPane.Msg
+    | ImportersDropdownMsg Dropdown.State
+    | ActionsDropdownMsg Dropdown.State
+    | CollapseItem String
+    | ExpandItem String
+    | CollapseItems (List String)
+    | ExpandItems (List String)
+    | GotLocalStorageData E.Value
+    | CopyLinkToQuestion (List String)
+    | ClearRecentlyCopied
+    | GetCommentThreadsCompleted String (Result ApiError (Dict String (List CommentThread)))
+    | UserSuggestionDropdownMsg String Uuid Bool UserSuggestionDropdown.Msg
+    | LinkedItemsDropdownMsg String Dropdown.State
+    | SearchPanelMsg SearchPanel.Msg
+    | PluginProjectActionModalMsg (PluginModal.Msg ProjectCommon)
+    | PluginProjectQuestionActionModalMsg (PluginModal.Msg ( ProjectCommon, Question, String ))
+
+
+update : Msg -> (Msg -> msg) -> Maybe (Bool -> msg) -> AppState -> Context -> Model -> ( Seed, Model, Cmd msg )
+update msg wrapMsg mbSetFullscreenMsg appState ctx model =
+    let
+        withSeed ( newModel, cmd ) =
+            ( appState.seed, newModel, Cmd.map wrapMsg cmd )
+
+        wrap newModel =
+            ( appState.seed, newModel, Cmd.none )
+
+        updateCollapsedItems newCollapsedItems =
+            withSeed
+                ( { model | collapsedItems = newCollapsedItems }
+                , localStorageCollapsedItemsCmd model.uuid newCollapsedItems
+                )
+
+        loadComments path =
+            ProjectsApi.getCommentThreads appState model.uuid path (GetCommentThreadsCompleted path)
+    in
+    case msg of
+        SetActivePage activePage ->
+            withSeed <| handleSetActivePage model activePage
+
+        SetRightPanel rightPanel ->
+            let
+                showRightPanel condition panel =
+                    if condition then
+                        panel
+
+                    else
+                        RightPanel.None
+
+                updatedRightPanel =
+                    case rightPanel of
+                        RightPanel.None ->
+                            RightPanel.None
+
+                        RightPanel.Search ->
+                            showRightPanel
+                                (Feature.projectSearch model.questionnaire)
+                                RightPanel.Search
+
+                        RightPanel.TODOs ->
+                            showRightPanel
+                                (Feature.projectTodos appState model.questionnaire)
+                                RightPanel.TODOs
+
+                        RightPanel.VersionHistory ->
+                            showRightPanel
+                                (Feature.projectVersionHistory appState model.questionnaire)
+                                RightPanel.VersionHistory
+
+                        RightPanel.CommentsOverview ->
+                            showRightPanel
+                                (Feature.projectCommentAdd appState model.questionnaire)
+                                RightPanel.CommentsOverview
+
+                        RightPanel.Comments path ->
+                            showRightPanel
+                                (Feature.projectCommentAdd appState model.questionnaire)
+                                (RightPanel.Comments path)
+
+                        RightPanel.Warnings ->
+                            showRightPanel
+                                (ProjectQuestionnaire.warningsLength model.questionnaire > 0)
+                                RightPanel.Warnings
+
+                        RightPanel.PluginQuestionAction data ->
+                            showRightPanel True (RightPanel.PluginQuestionAction data)
+
+                panelCmd =
+                    case updatedRightPanel of
+                        RightPanel.Search ->
+                            Dom.focus ("#" ++ SearchPanel.searchInputId)
+
+                        RightPanel.VersionHistory ->
+                            Cmd.batch
+                                [ ProjectsApi.getEvents appState model.uuid model.projectEventsPage (GetQuestionnaireEventsCompleted 0)
+                                , ProjectsApi.getVersions appState model.uuid GetQuestionnaireVersionsCompleted
+                                ]
+
+                        RightPanel.Comments path ->
+                            loadComments path
+
+                        _ ->
+                            Cmd.none
+
+                newModel =
+                    { model | rightPanel = updatedRightPanel, projectEvents = ActionResult.Loading, projectEventsPage = 0 }
+            in
+            withSeed
+                ( newModel
+                , Cmd.batch
+                    [ panelCmd
+                    , localStorageRightPanelCmd newModel
+                    ]
+                )
+
+        SetFullscreen fullscreen ->
+            case mbSetFullscreenMsg of
+                Just setFullscreenMsg ->
+                    ( appState.seed, model, Task.dispatch (setFullscreenMsg fullscreen) )
+
+                Nothing ->
+                    ( appState.seed, model, Cmd.none )
+
+        ScrollToPath path ->
+            withSeed <| handleScrollToPath model False path
+
+        ScrollToQuestion questionUuid ->
+            case ProjectQuestionnaire.getClosestQuestionParentPath model.questionnaire model.knowledgeModelParentMap questionUuid of
+                Just path ->
+                    withSeed <| handleScrollToPath model True path
+
+                Nothing ->
+                    wrap model
+
+        OpenChapter chapterUuid ->
+            let
+                ( newModel, cmd ) =
+                    handleSetActivePage { model | mbHighlightedPath = Just chapterUuid } (PageChapter chapterUuid)
+            in
+            withSeed ( newModel, Cmd.batch [ cmd, Task.dispatchAfter 3000 (ClearHighlight chapterUuid) ] )
+
+        ClearHighlight path ->
+            if model.mbHighlightedPath == Just path then
+                wrap { model | mbHighlightedPath = Nothing }
+
+            else
+                wrap model
+
+        UpdateContentScroll ->
+            let
+                subscribeCmd =
+                    Dom.subscribeScrollTop contentElementSelector
+            in
+            case model.contentScrollTop of
+                Just value ->
+                    withSeed
+                        ( model
+                        , Cmd.batch
+                            [ subscribeCmd
+                            , Dom.setScrollTop
+                                { selector = contentElementSelector
+                                , scrollTop = value
+                                }
+                            ]
+                        )
+
+                Nothing ->
+                    withSeed ( model, subscribeCmd )
+
+        GotContentScroll value ->
+            case decodeValue ElementScrollTop.decoder value of
+                Ok elementScrollTop ->
+                    if elementScrollTop.selector == contentElementSelector then
+                        wrap { model | contentScrollTop = Just elementScrollTop.scrollTop }
+
+                    else
+                        wrap model
+
+                Err _ ->
+                    wrap model
+
+        ShowTypeHints path emptySearch questionUuid value ->
+            withSeed <| handleShowTypeHints appState ctx model path emptySearch questionUuid value
+
+        HideTypeHints ->
+            wrap { model | typeHints = Nothing }
+
+        TypeHintInput path allowCustomReply emptySearch value ->
+            withSeed <| handleTypeHintInput model path allowCustomReply emptySearch value
+
+        TypeHintDebounceMsg debounceMsg ->
+            withSeed <| handleTypeHintDebounceMsg appState ctx model debounceMsg
+
+        TypeHintsLoaded path value result ->
+            wrap <| handleTypeHintsLoaded appState model path value result
+
+        ShowTypeHintsLegacy path emptySearch questionUuid value ->
+            withSeed <| handleShowTypeHintsLegacy appState ctx model path emptySearch questionUuid value
+
+        HideTypeHintsLegacy ->
+            wrap { model | typeHintsLegacy = Nothing }
+
+        TypeHintLegacyInput path emptySearch value ->
+            withSeed <| handleTypeHintsLegacyInput model path emptySearch value
+
+        TypeHintLegacyDebounceMsg debounceMsg ->
+            withSeed <| handleTypeHintLegacyDebounceMsg appState ctx model debounceMsg
+
+        TypeHintsLegacyLoaded path value result ->
+            wrap <| handleTypeHintsLegacyLoaded appState model path value result
+
+        FeedbackModalMsg feedbackModalMsg ->
+            withSeed <| handleFeedbackModalMsg appState model feedbackModalMsg
+
+        FileUploadModalMsg fileUploadModalMsg ->
+            withSeed <| handleFileUploadModalMsg appState model fileUploadModalMsg
+
+        PhaseModalUpdate open mbPhaseUuid ->
+            let
+                modelWithPhase =
+                    if Maybe.isJust mbPhaseUuid then
+                        setPhaseUuid mbPhaseUuid model
+
+                    else
+                        model
+            in
+            wrap { modelWithPhase | phaseModalOpen = open }
+
+        SetReply path replyValue ->
+            wrap <| setReply path replyValue model
+
+        SetFile path file ->
+            let
+                modelWithFile =
+                    updateQuestionnaire (ProjectQuestionnaire.addFile file) model
+
+                reply =
+                    createReply appState (FileReply file.uuid)
+            in
+            withSeed <| ( modelWithFile, Task.dispatch (SetReply path reply) )
+
+        ClearReply path ->
+            wrap <| clearReply path model
+
+        AddItem path originalItems ->
+            handleAddItem appState wrapMsg model path originalItems
+
+        RemoveItem path itemUuid ->
+            wrap <| { model | removeItem = Just ( path, itemUuid ) }
+
+        RemoveItemConfirm ->
+            case model.removeItem of
+                Just ( path, itemUuid ) ->
+                    let
+                        itemUuids =
+                            Dict.get path model.questionnaire.replies
+                                |> Maybe.unwrap [] (.value >> ReplyValue.getItemUuids)
+
+                        newItemUuids =
+                            List.filter ((/=) itemUuid) itemUuids
+
+                        replyValue =
+                            createReply appState (ItemListReply newItemUuids)
+
+                        setReplyMsg =
+                            SetReply path replyValue
+                    in
+                    withSeed ( { model | removeItem = Nothing }, Task.dispatch setReplyMsg )
+
+                Nothing ->
+                    wrap model
+
+        RemoveItemCancel ->
+            wrap <| { model | removeItem = Nothing }
+
+        DeleteFile fileUuid path ->
+            wrap <|
+                { model
+                    | deleteFile = Just ( fileUuid, path )
+                    , deletingFile = ActionResult.Unset
+                }
+
+        DeleteFileConfirm ->
+            case model.deleteFile of
+                Just ( fileUuid, path ) ->
+                    let
+                        deleteFileCmd =
+                            ProjectFilesApi.delete appState model.uuid fileUuid (DeleteFileCompleted path)
+
+                        modelWithDeletingFile =
+                            { model | deletingFile = ActionResult.Loading }
+                    in
+                    withSeed ( modelWithDeletingFile, deleteFileCmd )
+
+                Nothing ->
+                    wrap model
+
+        DeleteFileCompleted path result ->
+            case result of
+                Ok _ ->
+                    withSeed
+                        ( { model | deleteFile = Nothing }
+                        , Task.dispatch (ClearReply path)
+                        )
+
+                Err err ->
+                    wrap { model | deletingFile = ApiError.toActionResult appState (gettext "Unable to delete file." appState.locale) err }
+
+        DeleteFileCancel ->
+            wrap <| { model | deleteFile = Nothing }
+
+        DownloadFile uuid ->
+            withSeed ( model, Cmd.map FileDownloaderMsg (FileDownloader.fetchFile (AppState.toServerInfo appState) (ProjectFilesApi.fileUrl model.uuid uuid)) )
+
+        FileDownloaderMsg fileDownloaderMsg ->
+            withSeed ( model, Cmd.map FileDownloaderMsg (FileDownloader.update fileDownloaderMsg) )
+
+        MoveItemUp path itemUuid ->
+            let
+                itemUuids =
+                    Dict.get path model.questionnaire.replies
+                        |> Maybe.unwrap [] (.value >> ReplyValue.getItemUuids)
+
+                index =
+                    Maybe.withDefault -1 (List.elemIndex itemUuid itemUuids)
+
+                newItemUuids =
+                    if index > 0 then
+                        List.swapAt index (index - 1) itemUuids
+
+                    else
+                        itemUuids
+
+                replyValue =
+                    createReply appState (ItemListReply newItemUuids)
+
+                setReplyMsg =
+                    SetReply path replyValue
+            in
+            withSeed ( { model | removeItem = Nothing }, Task.dispatch setReplyMsg )
+
+        MoveItemDown path itemUuid ->
+            let
+                itemUuids =
+                    Dict.get path model.questionnaire.replies
+                        |> Maybe.unwrap [] (.value >> ReplyValue.getItemUuids)
+
+                itemCount =
+                    List.length itemUuids
+
+                index =
+                    Maybe.withDefault (List.length itemUuids) (List.elemIndex itemUuid itemUuids)
+
+                newItemUuids =
+                    if index < itemCount - 1 then
+                        List.swapAt index (index + 1) itemUuids
+
+                    else
+                        itemUuids
+
+                replyValue =
+                    createReply appState (ItemListReply newItemUuids)
+
+                setReplyMsg =
+                    SetReply path replyValue
+            in
+            withSeed ( { model | removeItem = Nothing }, Task.dispatch setReplyMsg )
+
+        SetLabels path value ->
+            wrap <| setLabels path value model
+
+        ViewSettingsDropdownMsg state ->
+            wrap { model | viewSettingsDropdown = state }
+
+        SetViewSettings viewSettings ->
+            withSeed
+                ( { model | viewSettings = viewSettings }
+                , LocalStorage.setItem localStorageViewSettingsKey (QuestionnaireViewSettings.encode viewSettings)
+                )
+
+        LoadMoreQuestionnaireEvents ->
+            withSeed
+                ( { model | projectEventsExtraLoading = ActionResult.Loading }
+                , ProjectsApi.getEvents appState model.uuid model.projectEventsPage (GetQuestionnaireEventsCompleted model.projectEventsPage)
+                )
+
+        GetQuestionnaireEventsCompleted page result ->
+            wrap <|
+                case result of
+                    Ok questionnaireEvents ->
+                        if page == questionnaireEvents.page.number then
+                            let
+                                currentItems =
+                                    ActionResult.withDefault [] model.projectEvents
+                            in
+                            { model
+                                | projectEvents = ActionResult.Success (List.reverse questionnaireEvents.items ++ currentItems)
+                                , projectEventsExtraLoading = ActionResult.Unset
+                                , projectEventsPage = page + 1
+                                , projectEventsLoadMore = page + 1 < questionnaireEvents.page.totalPages
+                            }
+
+                        else
+                            model
+
+                    Err _ ->
+                        { model | projectEvents = Error (gettext "Unable to get version history." appState.locale) }
+
+        GetQuestionnaireVersionsCompleted result ->
+            wrap <|
+                case result of
+                    Ok questionnaireVersions ->
+                        { model | projectVersions = Success questionnaireVersions }
+
+                    Err _ ->
+                        { model | projectVersions = Error (gettext "Unable to get version history." appState.locale) }
+
+        HistoryMsg historyMsg ->
+            let
+                newModel =
+                    { model | historyModel = History.update historyMsg model.historyModel }
+
+                cmd =
+                    case historyMsg of
+                        History.SetNamedOnly _ ->
+                            localStorageNamedOnlyCmd newModel
+
+                        _ ->
+                            Cmd.none
+            in
+            withSeed ( newModel, cmd )
+
+        VersionModalMsg versionModalMsg ->
+            let
+                cfg =
+                    { wrapMsg = VersionModalMsg
+                    , projectUuid = model.questionnaire.uuid
+                    , addVersionCmd = Task.dispatch << AddQuestionnaireVersion
+                    , renameVersionCmd = Task.dispatch << UpdateQuestionnaireVersion
+                    }
+
+                ( versionModalModel, cmd ) =
+                    VersionModal.update cfg appState versionModalMsg model.versionModalModel
+
+                newModel =
+                    { model | versionModalModel = versionModalModel }
+            in
+            withSeed ( newModel, cmd )
+
+        DeleteVersionModalMsg modalMsg ->
+            let
+                cfg =
+                    { wrapMsg = DeleteVersionModalMsg
+                    , projectUuid = model.questionnaire.uuid
+                    , deleteVersionCmd = Task.dispatch << DeleteQuestionnaireVersion
+                    }
+
+                ( deleteVersionModalModel, cmd ) =
+                    DeleteVersionModal.update cfg appState modalMsg model.deleteVersionModalModel
+
+                newModel =
+                    { model | deleteVersionModalModel = deleteVersionModalModel }
+            in
+            withSeed ( newModel, cmd )
+
+        CreateNamedVersion eventUuid ->
+            wrap { model | versionModalModel = VersionModal.setEventUuid eventUuid model.versionModalModel }
+
+        RenameVersion questionnaireVersion ->
+            wrap { model | versionModalModel = VersionModal.setVersion questionnaireVersion model.versionModalModel }
+
+        DeleteVersion questionnaireVersion ->
+            wrap { model | deleteVersionModalModel = DeleteVersionModal.setVersion questionnaireVersion model.deleteVersionModalModel }
+
+        AddQuestionnaireVersion questionnaireVersion ->
+            let
+                questionnaireVersions =
+                    ActionResult.map ((::) questionnaireVersion) model.projectVersions
+            in
+            wrap { model | projectVersions = questionnaireVersions }
+
+        UpdateQuestionnaireVersion questionnaireVersion ->
+            let
+                updateVersion version =
+                    if version.uuid == questionnaireVersion.uuid then
+                        { version | name = questionnaireVersion.name, description = questionnaireVersion.description }
+
+                    else
+                        version
+
+                questionnaireVersions =
+                    ActionResult.map (List.map updateVersion) model.projectVersions
+            in
+            wrap { model | projectVersions = questionnaireVersions }
+
+        DeleteQuestionnaireVersion questionnaireVersion ->
+            let
+                questionnaireVersions =
+                    ActionResult.map (List.filter (not << (==) questionnaireVersion.uuid << .uuid)) model.projectVersions
+            in
+            wrap
+                { model | projectVersions = questionnaireVersions }
+
+        OpenComments immediate path ->
+            let
+                ( newModel, cmd ) =
+                    handleScrollToPath { model | rightPanel = RightPanel.Comments path } immediate path
+            in
+            withSeed
+                ( newModel
+                , Cmd.batch
+                    [ cmd
+                    , loadComments path
+                    , localStorageRightPanelCmd newModel
+                    ]
+                )
+
+        CommentInput path mbThreadUuid value ->
+            let
+                key =
+                    path ++ "-" ++ Maybe.unwrap "0" Uuid.toString mbThreadUuid
+
+                commentInputs =
+                    Dict.insert key value model.commentInputs
+            in
+            wrap { model | commentInputs = commentInputs }
+
+        CommentSubmit path mbThreadUuid _ _ ->
+            let
+                key =
+                    path ++ "-" ++ Maybe.unwrap "0" Uuid.toString mbThreadUuid
+
+                commentInputs =
+                    Dict.remove key model.commentInputs
+            in
+            wrap { model | commentInputs = commentInputs }
+
+        CommentEditInput commentUuid value ->
+            let
+                commentEditInputs =
+                    Dict.insert (Uuid.toString commentUuid) value model.commentEditInputs
+            in
+            wrap { model | commentEditInputs = commentEditInputs }
+
+        CommentEditCancel commentUuid ->
+            let
+                commentEditInputs =
+                    Dict.remove (Uuid.toString commentUuid) model.commentEditInputs
+            in
+            wrap { model | commentEditInputs = commentEditInputs }
+
+        CommentEditSubmit _ _ commentUuid _ _ ->
+            let
+                commentEditInputs =
+                    Dict.remove (Uuid.toString commentUuid) model.commentEditInputs
+            in
+            wrap { model | commentEditInputs = commentEditInputs }
+
+        CommentDelete mbCommentUuid ->
+            wrap { model | commentDeleting = mbCommentUuid, commentDeletingListenClicks = False }
+
+        CommentDeleteListenClicks ->
+            wrap { model | commentDeletingListenClicks = True }
+
+        CommentsViewResolved value ->
+            let
+                newModel =
+                    { model | commentsViewResolved = value }
+            in
+            withSeed ( newModel, localStorageViewResolvedCmd newModel )
+
+        CommentsViewPrivate value ->
+            wrap { model | commentsViewPrivate = value }
+
+        CommentDropdownMsg commentUuid state ->
+            wrap { model | commentDropdownStates = Dict.insert commentUuid state model.commentDropdownStates }
+
+        SplitPaneMsg splitPaneMsg ->
+            wrap { model | splitPane = SplitPane.update splitPaneMsg model.splitPane }
+
+        ImportersDropdownMsg state ->
+            wrap { model | pluginImportersDropdown = state }
+
+        ActionsDropdownMsg state ->
+            wrap { model | pluginActionsDropdown = state }
+
+        CollapseItem path ->
+            updateCollapsedItems <|
+                Set.insert path model.collapsedItems
+
+        ExpandItem path ->
+            updateCollapsedItems <|
+                Set.remove path model.collapsedItems
+
+        CollapseItems paths ->
+            updateCollapsedItems <|
+                List.foldl Set.insert model.collapsedItems paths
+
+        ExpandItems paths ->
+            updateCollapsedItems <|
+                List.foldl Set.remove model.collapsedItems paths
+
+        GotLocalStorageData data ->
+            case decodeValue (D.field "key" D.string) data of
+                Ok key ->
+                    if key == localStorageViewSettingsKey then
+                        case LocalStorage.decodeItemValue QuestionnaireViewSettings.decoder data of
+                            Ok value ->
+                                wrap { model | viewSettings = value }
+
+                            Err _ ->
+                                wrap model
+
+                    else if key == localStorageCollapsedItemKey model.uuid then
+                        case LocalStorage.decodeItemValue (D.set D.string) data of
+                            Ok value ->
+                                wrap { model | collapsedItems = value }
+
+                            Err _ ->
+                                wrap model
+
+                    else if key == localStorageRightPanelKey model.uuid then
+                        case LocalStorage.decodeItemValue RightPanel.decoder data of
+                            Ok value ->
+                                withSeed ( model, Task.dispatch (SetRightPanel value) )
+
+                            Err _ ->
+                                wrap model
+
+                    else if key == localStorageViewResolvedKey model.uuid then
+                        case LocalStorage.decodeItemValue D.bool data of
+                            Ok value ->
+                                wrap { model | commentsViewResolved = value }
+
+                            Err _ ->
+                                wrap model
+
+                    else if key == localStorageNamedOnlyKey model.uuid then
+                        case LocalStorage.decodeItemValue D.bool data of
+                            Ok value ->
+                                wrap { model | historyModel = History.setNamedOnly value model.historyModel }
+
+                            Err _ ->
+                                wrap model
+
+                    else
+                        wrap model
+
+                Err _ ->
+                    wrap model
+
+        CopyLinkToQuestion path ->
+            let
+                route =
+                    Routing.toUrl <|
+                        Routes.projectsDetailQuestionnaire model.uuid (Just (String.join "." path)) Nothing
+            in
+            ( appState.seed, { model | recentlyCopied = True }, Copy.copyToClipboard (AppState.getClientUrlRoot appState ++ route) )
+
+        ClearRecentlyCopied ->
+            wrap { model | recentlyCopied = False }
+
+        GetCommentThreadsCompleted path result ->
+            case result of
+                Ok threads ->
+                    let
+                        newModel =
+                            case Dict.get path threads of
+                                Just commentThreads ->
+                                    { model | commentThreadsMap = Dict.insert path (Success commentThreads) model.commentThreadsMap }
+
+                                Nothing ->
+                                    { model | commentThreadsMap = Dict.insert path (Success []) model.commentThreadsMap }
+                    in
+                    case model.mbCommentThreadUuid of
+                        Just threadUuid ->
+                            let
+                                selector =
+                                    "[data-comment-thread-uuid=\"" ++ Uuid.toString threadUuid ++ "\"]"
+
+                                ( isPrivate, isResolved ) =
+                                    Dict.get path newModel.commentThreadsMap
+                                        |> Maybe.andThen ActionResult.toMaybe
+                                        |> Maybe.andThen (List.find (\t -> t.uuid == threadUuid))
+                                        |> Maybe.unwrap ( False, False ) (\t -> ( t.private, t.resolved ))
+                            in
+                            withSeed
+                                ( { newModel
+                                    | mbCommentThreadUuid = Nothing
+                                    , commentsViewPrivate = isPrivate
+                                    , commentsViewResolved = isResolved
+                                  }
+                                , Dom.scrollIntoView selector
+                                )
+
+                        Nothing ->
+                            wrap newModel
+
+                Err _ ->
+                    wrap { model | commentThreadsMap = Dict.insert path (Error (gettext "Unable to get comments." appState.locale)) model.commentThreadsMap }
+
+        UserSuggestionDropdownMsg uuid threadUuid editorNote userSuggestionDropdownMsg ->
+            let
+                ( userSuggestionModalModel, userSuggestionCmd ) =
+                    Dict.get uuid model.userSuggestionDropdownModels
+                        |> Maybe.withDefault (UserSuggestionDropdown.init model.uuid threadUuid editorNote)
+                        |> UserSuggestionDropdown.update appState userSuggestionDropdownMsg
+            in
+            withSeed
+                ( { model | userSuggestionDropdownModels = Dict.insert uuid userSuggestionModalModel model.userSuggestionDropdownModels }
+                , Cmd.map (UserSuggestionDropdownMsg uuid threadUuid editorNote) userSuggestionCmd
+                )
+
+        LinkedItemsDropdownMsg itemUuid state ->
+            wrap { model | linkedItemsDropdownStates = Dict.insert itemUuid state model.linkedItemsDropdownStates }
+
+        SearchPanelMsg searchPanelMsg ->
+            let
+                ( searchPanelModel, searchPanelCmd ) =
+                    SearchPanel.update appState model.questionnaire searchPanelMsg model.searchPanelModel
+            in
+            withSeed ( { model | searchPanelModel = searchPanelModel }, Cmd.map SearchPanelMsg searchPanelCmd )
+
+        PluginProjectActionModalMsg pluginModalMsg ->
+            wrap { model | pluginProjectActionModal = PluginModal.update pluginModalMsg model.pluginProjectActionModal }
+
+        PluginProjectQuestionActionModalMsg pluginModalMsg ->
+            wrap { model | pluginProjectQuestionActionModal = PluginModal.update pluginModalMsg model.pluginProjectQuestionActionModal }
+
+        _ ->
+            wrap model
+
+
+localStorageCollapsedItemsCmd : Uuid -> Set String -> Cmd msg
+localStorageCollapsedItemsCmd uuid items =
+    LocalStorage.setItem
+        (localStorageCollapsedItemKey uuid)
+        (E.set E.string items)
+
+
+localStorageRightPanelCmd : Model -> Cmd msg
+localStorageRightPanelCmd model =
+    if model.rightPanel == RightPanel.None then
+        LocalStorage.removeItem (localStorageRightPanelKey model.uuid)
+
+    else
+        LocalStorage.setItem
+            (localStorageRightPanelKey model.uuid)
+            (RightPanel.encode model.rightPanel)
+
+
+localStorageViewResolvedCmd : Model -> Cmd msg
+localStorageViewResolvedCmd model =
+    LocalStorage.setItem
+        (localStorageViewResolvedKey model.uuid)
+        (E.bool model.commentsViewResolved)
+
+
+localStorageNamedOnlyCmd : Model -> Cmd msg
+localStorageNamedOnlyCmd model =
+    LocalStorage.setItem
+        (localStorageNamedOnlyKey model.uuid)
+        (E.bool model.historyModel.namedOnly)
+
+
+handleSetActivePage : Model -> ActivePage -> ( Model, Cmd Msg )
+handleSetActivePage model activePage =
+    ( { model
+        | activePage = activePage
+        , contentScrollTop = Nothing
+      }
+    , Dom.scrollToTop contentElementSelector
+    )
+
+
+handleScrollToPath : Model -> Bool -> String -> ( Model, Cmd Msg )
+handleScrollToPath model immediate path =
+    let
+        pathParts =
+            String.split "." path
+
+        chapterUuid =
+            List.head pathParts
+                |> Maybe.withDefault ""
+
+        createSubpaths parts =
+            case parts of
+                [] ->
+                    []
+
+                _ ->
+                    let
+                        rest =
+                            List.unconsLast parts
+                                |> Maybe.unwrap [] Tuple.second
+                    in
+                    String.join "." parts :: createSubpaths rest
+
+        newCollapsedItems =
+            createSubpaths pathParts
+                |> List.foldl (\currentPath collapsedItems -> Set.remove currentPath collapsedItems) model.collapsedItems
+
+        selector =
+            "[data-path=\"" ++ path ++ "\"]"
+
+        scrollIntoViewCmd =
+            if immediate then
+                Dom.scrollIntoViewInstant selector
+
+            else
+                Dom.scrollIntoView selector
+    in
+    ( { model
+        | activePage = PageChapter chapterUuid
+        , removeItem = Nothing
+        , collapsedItems = newCollapsedItems
+        , mbHighlightedPath = Just path
+      }
+    , Cmd.batch
+        [ scrollIntoViewCmd
+        , localStorageCollapsedItemsCmd model.uuid newCollapsedItems
+        , Task.dispatchAfter 3000 (ClearHighlight path)
+        ]
+    )
+
+
+handleShowTypeHints : AppState -> Context -> Model -> List String -> Bool -> String -> String -> ( Model, Cmd Msg )
+handleShowTypeHints appState ctx model path emptySearch questionUuid value =
+    if not emptySearch && String.isEmpty value then
+        ( model, Cmd.none )
+
+    else
+        let
+            typeHints =
+                Just
+                    { path = path
+                    , searchValue = value
+                    , hints = Loading
+                    }
+
+            cmd =
+                loadTypeHints appState ctx model path questionUuid value
+        in
+        ( { model | typeHints = typeHints }, cmd )
+
+
+handleShowTypeHintsLegacy : AppState -> Context -> Model -> List String -> Bool -> String -> String -> ( Model, Cmd Msg )
+handleShowTypeHintsLegacy appState ctx model path emptySearch questionUuid value =
+    if not emptySearch && String.isEmpty value then
+        ( model, Cmd.none )
+
+    else
+        let
+            typeHints =
+                Just
+                    { path = path
+                    , searchValue = value
+                    , hints = Loading
+                    }
+
+            cmd =
+                loadTypeHintsLegacy appState ctx model path questionUuid value
+        in
+        ( { model | typeHintsLegacy = typeHints }, cmd )
+
+
+handleTypeHintInput : Model -> List String -> Bool -> Bool -> Reply -> ( Model, Cmd Msg )
+handleTypeHintInput model path allowCustomReply emptySearch reply =
+    let
+        ( ( debounce, debounceCmd ), newTypeHints ) =
+            case ( emptySearch, reply.value ) of
+                ( False, IntegrationReply (PlainType "") ) ->
+                    ( ( model.typeHintsDebounce, Cmd.none ), Nothing )
+
+                _ ->
+                    let
+                        questionUuid =
+                            Maybe.withDefault "" (List.last path)
+
+                        updatedTypeHints =
+                            Just
+                                { path = path
+                                , searchValue = ReplyValue.getStringReply reply.value
+                                , hints = Loading
+                                }
+                    in
+                    ( Debounce.push
+                        debounceConfig
+                        ( path, questionUuid, ReplyValue.getStringReply reply.value )
+                        model.typeHintsDebounce
+                    , updatedTypeHints
+                    )
+
+        dispatchCmd =
+            if allowCustomReply then
+                Task.dispatch <| SetReply (pathToString path) reply
+
+            else
+                Cmd.none
+    in
+    ( { model | typeHintsDebounce = debounce, typeHints = newTypeHints }
+    , Cmd.batch [ debounceCmd, dispatchCmd ]
+    )
+
+
+handleTypeHintsLegacyInput : Model -> List String -> Bool -> Reply -> ( Model, Cmd Msg )
+handleTypeHintsLegacyInput model path emptySearch reply =
+    let
+        ( ( debounce, debounceCmd ), newTypeHints ) =
+            case ( emptySearch, reply.value ) of
+                ( False, IntegrationReply (PlainType "") ) ->
+                    ( ( model.typeHintsLegacyDebounce, Cmd.none ), Nothing )
+
+                _ ->
+                    let
+                        questionUuid =
+                            Maybe.withDefault "" (List.last path)
+
+                        updatedTypeHints =
+                            Just
+                                { path = path
+                                , searchValue = ReplyValue.getStringReply reply.value
+                                , hints = Loading
+                                }
+                    in
+                    ( Debounce.push
+                        debounceConfigLegacy
+                        ( path, questionUuid, ReplyValue.getStringReply reply.value )
+                        model.typeHintsLegacyDebounce
+                    , updatedTypeHints
+                    )
+
+        dispatchCmd =
+            Task.dispatch <|
+                SetReply (pathToString path) reply
+    in
+    ( { model | typeHintsLegacyDebounce = debounce, typeHintsLegacy = newTypeHints }
+    , Cmd.batch [ debounceCmd, dispatchCmd ]
+    )
+
+
+handleTypeHintDebounceMsg : AppState -> Context -> Model -> Debounce.Msg -> ( Model, Cmd Msg )
+handleTypeHintDebounceMsg appState ctx model debounceMsg =
+    let
+        load ( path, questionUuid, value ) =
+            loadTypeHints appState ctx model path questionUuid value
+
+        ( typeHintsDebounce, cmd ) =
+            Debounce.update
+                debounceConfig
+                (Debounce.takeLast load)
+                debounceMsg
+                model.typeHintsDebounce
+    in
+    ( { model | typeHintsDebounce = typeHintsDebounce }, cmd )
+
+
+handleTypeHintLegacyDebounceMsg : AppState -> Context -> Model -> Debounce.Msg -> ( Model, Cmd Msg )
+handleTypeHintLegacyDebounceMsg appState ctx model debounceMsg =
+    let
+        load ( path, questionUuid, value ) =
+            loadTypeHintsLegacy appState ctx model path questionUuid value
+
+        ( typeHintsDebounce, cmd ) =
+            Debounce.update
+                debounceConfigLegacy
+                (Debounce.takeLast load)
+                debounceMsg
+                model.typeHintsLegacyDebounce
+    in
+    ( { model | typeHintsLegacyDebounce = typeHintsDebounce }, cmd )
+
+
+handleTypeHintsLoaded : AppState -> Model -> List String -> String -> Result ApiError (List TypeHint) -> Model
+handleTypeHintsLoaded appState model path value result =
+    case model.typeHints of
+        Just typeHints ->
+            if typeHints.path == path && typeHints.searchValue == value then
+                case result of
+                    Ok hints ->
+                        { model | typeHints = Just { typeHints | hints = Success hints } }
+
+                    Err _ ->
+                        { model | typeHints = Just { typeHints | hints = Error <| gettext "Unable to get type hints." appState.locale } }
+
+            else
+                model
+
+        _ ->
+            model
+
+
+handleTypeHintsLegacyLoaded : AppState -> Model -> List String -> String -> Result ApiError (List TypeHintLegacy) -> Model
+handleTypeHintsLegacyLoaded appState model path value result =
+    case model.typeHintsLegacy of
+        Just typeHints ->
+            if typeHints.path == path && typeHints.searchValue == value then
+                case result of
+                    Ok hints ->
+                        { model | typeHintsLegacy = Just { typeHints | hints = Success hints } }
+
+                    Err _ ->
+                        { model | typeHintsLegacy = Just { typeHints | hints = Error <| gettext "Unable to get type hints." appState.locale } }
+
+            else
+                model
+
+        _ ->
+            model
+
+
+handleFeedbackModalMsg : AppState -> Model -> FeedbackModal.Msg -> ( Model, Cmd Msg )
+handleFeedbackModalMsg appState model feedbackModalMsg =
+    let
+        ( feedbackModalModel, cmd ) =
+            FeedbackModal.update feedbackModalMsg appState model.feedbackModalModel
+    in
+    ( { model | feedbackModalModel = feedbackModalModel }
+    , Cmd.map FeedbackModalMsg cmd
+    )
+
+
+handleFileUploadModalMsg : AppState -> Model -> FileUploadModal.Msg -> ( Model, Cmd Msg )
+handleFileUploadModalMsg appState model fileUploadModalMsg =
+    let
+        updateConfig =
+            { wrapMsg = FileUploadModalMsg
+            , setFileMsg = SetFile
+            }
+
+        ( fileUploadModalModel, fileUploadModalCmd ) =
+            FileUploadModal.update appState updateConfig fileUploadModalMsg model.fileUploadModalModel
+    in
+    ( { model | fileUploadModalModel = fileUploadModalModel }
+    , fileUploadModalCmd
+    )
+
+
+handleAddItem : AppState -> (Msg -> msg) -> Model -> String -> List String -> ( Seed, Model, Cmd msg )
+handleAddItem appState wrapMsg model path originalItems =
+    let
+        ( uuid, newSeed ) =
+            Uuid.stepString appState.seed
+
+        itemPath =
+            path ++ "." ++ uuid
+
+        scrollCmd =
+            Dom.scrollIntoView ("[data-path=\"" ++ itemPath ++ "\"]")
+
+        dispatchCmd =
+            ItemListReply (originalItems ++ [ uuid ])
+                |> createReply appState
+                |> SetReply path
+                |> wrapMsg
+                |> Task.dispatch
+    in
+    ( newSeed, model, Cmd.batch [ dispatchCmd, scrollCmd ] )
+
+
+debounceConfig : Debounce.Config Msg
+debounceConfig =
+    { strategy = Debounce.later 1000
+    , transform = TypeHintDebounceMsg
+    }
+
+
+debounceConfigLegacy : Debounce.Config Msg
+debounceConfigLegacy =
+    { strategy = Debounce.later 1000
+    , transform = TypeHintLegacyDebounceMsg
+    }
+
+
+loadTypeHints : AppState -> Context -> Model -> List String -> String -> String -> Cmd Msg
+loadTypeHints appState ctx model path questionUuidStr value =
+    let
+        questionUuid =
+            Uuid.fromUuidString questionUuidStr
+
+        typeHintRequest =
+            case ctx.kmEditorUuid of
+                Just kmEditorUuid ->
+                    TypeHintRequest.fromKmEditorQuestion kmEditorUuid questionUuid value
+
+                Nothing ->
+                    TypeHintRequest.fromProject model.questionnaire.uuid questionUuid value
+    in
+    TypeHintsApi.fetchTypeHints appState typeHintRequest (TypeHintsLoaded path value)
+
+
+loadTypeHintsLegacy : AppState -> Context -> Model -> List String -> String -> String -> Cmd Msg
+loadTypeHintsLegacy appState ctx model path questionUuid value =
+    TypeHintsApi.fetchTypeHintsLegacy appState
+        (Just model.questionnaire.knowledgeModelPackage.uuid)
+        ctx.events
+        questionUuid
+        value
+        (TypeHintsLegacyLoaded path value)
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    let
+        commentDeleteSub =
+            case ( model.commentDeleting, model.commentDeletingListenClicks ) of
+                ( Just _, False ) ->
+                    Browser.Events.onAnimationFrame (\_ -> CommentDeleteListenClicks)
+
+                ( Just _, True ) ->
+                    Browser.Events.onClick (D.succeed (CommentDelete Nothing))
+
+                _ ->
+                    Sub.none
+
+        commentDropdownSubs =
+            Dict.toList model.commentDropdownStates
+                |> List.map (\( uuid, state ) -> Dropdown.subscriptions state (CommentDropdownMsg uuid))
+
+        splitPaneSubscriptions =
+            Sub.map SplitPaneMsg <|
+                SplitPane.subscriptions model.splitPane
+
+        collapsedItemsSub =
+            LocalStorage.gotItemRaw GotLocalStorageData
+
+        contentScrollSub =
+            Dom.gotScrollTop GotContentScroll
+
+        userSuggestionDropdownSubs =
+            Dict.toList model.userSuggestionDropdownModels
+                |> List.map (\( uuid, userSuggestionModalModel ) -> Sub.map (UserSuggestionDropdownMsg uuid userSuggestionModalModel.threadUuid userSuggestionModalModel.editorNote) (UserSuggestionDropdown.subscriptions userSuggestionModalModel))
+
+        linkedItemsDropdownSubs =
+            Dict.toList model.linkedItemsDropdownStates
+                |> List.map (\( itemUuid, state ) -> Dropdown.subscriptions state (LinkedItemsDropdownMsg itemUuid))
+    in
+    Sub.batch
+        ([ Dropdown.subscriptions model.viewSettingsDropdown ViewSettingsDropdownMsg
+         , Dropdown.subscriptions model.pluginImportersDropdown ImportersDropdownMsg
+         , Dropdown.subscriptions model.pluginActionsDropdown ActionsDropdownMsg
+         , Sub.map HistoryMsg <| History.subscriptions model.historyModel
+         , commentDeleteSub
+         , splitPaneSubscriptions
+         , collapsedItemsSub
+         , contentScrollSub
+         ]
+            ++ commentDropdownSubs
+            ++ userSuggestionDropdownSubs
+            ++ linkedItemsDropdownSubs
+        )
+
+
+
+-- VIEW
+
+
+view : AppState -> Config msg -> Context -> Model -> Html msg
+view appState cfg ctx model =
+    let
+        ( toolbar, toolbarEnabled ) =
+            if cfg.features.toolbarEnabled then
+                ( Html.map cfg.wrapMsg <| viewQuestionnaireToolbar appState cfg model, True )
+
+            else
+                ( Html.nothing, False )
+
+        splitPaneConfig =
+            SplitPane.createViewConfig
+                { toMsg = cfg.wrapMsg << SplitPaneMsg
+                , customSplitter = Nothing
+                }
+
+        searchShortcut =
+            Shortcut.primaryShortcut appState.navigator.isMac (Shortcut.Regular "f") (cfg.wrapMsg (SetRightPanel RightPanel.Search))
+
+        shortcuts =
+            [ searchShortcut ]
+    in
+    Shortcut.shortcutElement shortcuts
+        [ class "questionnaire"
+        , classList [ ( "toolbar-enabled", toolbarEnabled ) ]
+        ]
+        [ toolbar
+        , div [ class "questionnaire__body", dataTour "questionnaire_body" ]
+            [ SplitPane.view splitPaneConfig
+                (Html.map cfg.wrapMsg <| viewQuestionnaireLeftPanel appState cfg model)
+                (Html.map cfg.wrapMsg <| viewQuestionnaireContent appState cfg ctx model)
+                model.splitPane
+            , viewQuestionnaireRightPanel appState cfg model
+            ]
+        , Html.map cfg.wrapMsg <| viewPhaseModal appState model
+        , Html.map (cfg.wrapMsg << FeedbackModalMsg) <| FeedbackModal.view appState model.feedbackModalModel
+        , Html.map (cfg.wrapMsg << FileUploadModalMsg) <| FileUploadModal.view appState cfg.isKmEditor model.fileUploadModalModel
+        , Html.map cfg.wrapMsg <| viewRemoveItemModal appState model
+        , Html.map cfg.wrapMsg <| viewFileDeleteModal appState model
+        , Html.map cfg.wrapMsg <| viewPluginProjectActionModal appState model
+        , Html.map cfg.wrapMsg <| viewPluginProjectQuestionActionModal appState model
+        ]
+
+
+
+-- QUESTIONNAIRE - TOOLBAR
+
+
+viewQuestionnaireToolbar : AppState -> Config msg -> Model -> Html Msg
+viewQuestionnaireToolbar appState cfg model =
+    let
+        viewDropdown =
+            let
+                viewSettings =
+                    model.viewSettings
+
+                settingsIcon enabled =
+                    if enabled then
+                        faSuccess
+
+                    else
+                        Html.nothing
+
+                hiddenOptionsTooltip =
+                    if QuestionnaireViewSettings.anyHidden viewSettings then
+                        tooltipRight (gettext "Some options are hidden" appState.locale)
+
+                    else
+                        []
+            in
+            div [ class "item-group" ]
+                [ Dropdown.dropdown model.viewSettingsDropdown
+                    { options = []
+                    , toggleMsg = ViewSettingsDropdownMsg
+                    , toggleButton =
+                        Dropdown.toggle [ Button.roleLink, Button.attrs [ class "item" ] ]
+                            [ div hiddenOptionsTooltip
+                                [ text (gettext "View" appState.locale)
+                                , Html.viewIf (QuestionnaireViewSettings.anyHidden viewSettings) (span [ class "ms-2 text-danger" ] [ fas "fa-circle fa-2xs" ])
+                                ]
+                            ]
+                    , items =
+                        [ Dropdown.anchorItem
+                            [ onClick (SetViewSettings QuestionnaireViewSettings.all) ]
+                            [ text (gettext "Show all" appState.locale) ]
+                        , Dropdown.anchorItem
+                            [ onClick (SetViewSettings QuestionnaireViewSettings.none) ]
+                            [ text (gettext "Hide all" appState.locale) ]
+                        , Dropdown.divider
+                        , Dropdown.anchorItem
+                            [ class "dropdown-item-icon", onClick (SetViewSettings (QuestionnaireViewSettings.toggleAnsweredBy viewSettings)) ]
+                            [ settingsIcon viewSettings.answeredBy, text (gettext "Answered by" appState.locale) ]
+                        , Dropdown.anchorItem
+                            [ class "dropdown-item-icon"
+                            , onClick (SetViewSettings (QuestionnaireViewSettings.togglePhases viewSettings))
+                            ]
+                            [ settingsIcon viewSettings.phases, text (gettext "Phases" appState.locale) ]
+                        , Dropdown.anchorItem
+                            [ class "dropdown-item-icon"
+                            , onClick (SetViewSettings (QuestionnaireViewSettings.toggleTags viewSettings))
+                            ]
+                            [ settingsIcon viewSettings.tags, text (gettext "Question tags" appState.locale) ]
+                        , Dropdown.anchorItem
+                            [ class "dropdown-item-icon"
+                            , onClick (SetViewSettings (QuestionnaireViewSettings.toggleNonDesirableQuestions viewSettings))
+                            ]
+                            [ settingsIcon viewSettings.nonDesirableQuestions, text (gettext "Non-desirable questions" appState.locale) ]
+                        , Dropdown.anchorItem
+                            [ class "dropdown-item-icon"
+                            , onClick (SetViewSettings (QuestionnaireViewSettings.toggleMetricValues viewSettings))
+                            ]
+                            [ settingsIcon viewSettings.metricValues, text (gettext "Metric values" appState.locale) ]
+                        ]
+                    }
+                ]
+
+        importerPlugins =
+            AppState.getPluginsByConnector appState .projectImporters
+                |> Plugin.filterByKmPatterns (KnowledgeModelUtils.getPackageId model.questionnaire.knowledgeModelPackage)
+                |> List.sortBy (.name << Tuple.second)
+                |> List.map pluginImporter
+
+        pluginImporter ( _, connector ) =
+            Dropdown.anchorItem
+                (class "dropdown-item" :: linkToAttributes (Routes.projectsImport model.uuid connector.url))
+                [ text connector.name ]
+
+        importersDropdown =
+            if List.isEmpty importerPlugins then
+                Html.nothing
+
+            else
+                div [ class "item-group" ]
+                    [ Dropdown.dropdown model.pluginImportersDropdown
+                        { options = []
+                        , toggleMsg = ImportersDropdownMsg
+                        , toggleButton =
+                            Dropdown.toggle [ Button.roleLink, Button.attrs [ class "item" ] ]
+                                [ text (gettext "Import" appState.locale) ]
+                        , items = importerPlugins
+                        }
+                    ]
+
+        projectActionPlugins =
+            case cfg.projectCommon of
+                Just projectCommon ->
+                    AppState.getPluginsByConnector appState .projectActions
+                        |> Plugin.filterByKmPatterns (KnowledgeModelUtils.getPackageId model.questionnaire.knowledgeModelPackage)
+                        |> List.sortBy (.name << Tuple.second)
+                        |> List.map (pluginAction projectCommon)
+
+                Nothing ->
+                    []
+
+        pluginAction projectCommon ( plugin, connector ) =
+            Dropdown.anchorItem
+                [ class "dropdown-item"
+                , onClick
+                    (PluginProjectActionModalMsg
+                        (PluginModal.open
+                            { pluginUuid = plugin.uuid
+                            , pluginElement = connector.element
+                            , data = projectCommon
+                            }
+                        )
+                    )
+                ]
+                [ text plugin.name ]
+
+        actionsDropdown =
+            if List.isEmpty projectActionPlugins then
+                Html.nothing
+
+            else
+                div [ class "item-group" ]
+                    [ Dropdown.dropdown model.pluginActionsDropdown
+                        { options = []
+                        , toggleMsg = ActionsDropdownMsg
+                        , toggleButton =
+                            Dropdown.toggle [ Button.roleLink, Button.attrs [ class "item item-actions" ] ]
+                                [ span [ class "icon" ] []
+                                , text (gettext "Actions" appState.locale)
+                                ]
+                        , items = projectActionPlugins
+                        }
+                    ]
+
+        navButton buttonElement visibleCondition =
+            if visibleCondition then
+                buttonElement
+
+            else
+                Html.nothing
+
+        ( searchPanel, searchOpen ) =
+            case model.rightPanel of
+                RightPanel.Search ->
+                    ( RightPanel.None, True )
+
+                _ ->
+                    ( RightPanel.Search, False )
+
+        ( todosPanel, todosOpen ) =
+            case model.rightPanel of
+                RightPanel.TODOs ->
+                    ( RightPanel.None, True )
+
+                _ ->
+                    ( RightPanel.TODOs, False )
+
+        ( commentsOverviewPanel, commentsOverviewOpen ) =
+            case model.rightPanel of
+                RightPanel.CommentsOverview ->
+                    ( RightPanel.None, True )
+
+                RightPanel.Comments _ ->
+                    ( RightPanel.CommentsOverview, True )
+
+                _ ->
+                    ( RightPanel.CommentsOverview, False )
+
+        ( versionsPanel, versionsOpen ) =
+            case model.rightPanel of
+                RightPanel.VersionHistory ->
+                    ( RightPanel.None, True )
+
+                _ ->
+                    ( RightPanel.VersionHistory, False )
+
+        ( warningsPanel, warningsOpen ) =
+            case model.rightPanel of
+                RightPanel.Warnings ->
+                    ( RightPanel.None, True )
+
+                _ ->
+                    ( RightPanel.Warnings, False )
+
+        searchButtonVisible =
+            Feature.projectSearch model.questionnaire
+
+        searchButton =
+            div [ class "item-group" ]
+                [ a
+                    (tooltip (gettext "Search" appState.locale)
+                        ++ [ class "item"
+                           , classList [ ( "selected", searchOpen ) ]
+                           , onClick (SetRightPanel searchPanel)
+                           , dataCy "questionnaire-search"
+                           ]
+                    )
+                    [ faSearch ]
+                ]
+
+        todosButtonVisible =
+            Feature.projectTodos appState model.questionnaire
+
+        todosButton questionnaire =
+            let
+                todosLength =
+                    ProjectQuestionnaire.todosLength questionnaire
+
+                todosBadge =
+                    if todosLength > 0 then
+                        Badge.danger [ class "rounded-pill" ] [ text (String.fromInt todosLength) ]
+
+                    else
+                        Html.nothing
+            in
+            div [ class "item-group" ]
+                [ a [ class "item", classList [ ( "selected", todosOpen ) ], onClick (SetRightPanel todosPanel) ]
+                    [ text (gettext "TODOs" appState.locale)
+                    , todosBadge
+                    ]
+                ]
+
+        commentsOverviewButtonVisible =
+            Feature.projectCommentAdd appState model.questionnaire
+
+        commentsOverviewButton questionnaire =
+            let
+                commentsLength =
+                    ProjectQuestionnaire.commentsLength questionnaire
+
+                commentsBadge =
+                    if commentsLength > 0 then
+                        Badge.secondary [ class "rounded-pill", dataCy "questionnaire_toolbar_comments_count" ] [ text (String.fromInt commentsLength) ]
+
+                    else
+                        Html.nothing
+            in
+            div [ class "item-group" ]
+                [ a [ class "item", classList [ ( "selected", commentsOverviewOpen ) ], onClick (SetRightPanel commentsOverviewPanel) ]
+                    [ text (gettext "Comments" appState.locale)
+                    , commentsBadge
+                    ]
+                ]
+
+        warningsLength =
+            ProjectQuestionnaire.warningsLength model.questionnaire
+
+        warningsButton =
+            div [ class "item-group" ]
+                [ a [ class "item", classList [ ( "selected", warningsOpen ) ], onClick (SetRightPanel warningsPanel) ]
+                    [ text (gettext "Warnings" appState.locale)
+                    , Badge.danger [ class "rounded-pill" ] [ text (String.fromInt warningsLength) ]
+                    ]
+                ]
+
+        warningsButtonVisible =
+            warningsLength > 0
+
+        versionHistoryButtonVisible =
+            Feature.projectVersionHistory appState model.questionnaire
+
+        versionHistoryButton =
+            div [ class "item-group" ]
+                [ a [ class "item", classList [ ( "selected", versionsOpen ) ], onClick (SetRightPanel versionsPanel) ]
+                    [ text (gettext "Version history" appState.locale) ]
+                ]
+
+        ( expandIcon, expandMsg ) =
+            if AppState.isFullscreen appState then
+                ( faQuestionnaireShrink, SetFullscreen False )
+
+            else
+                ( faQuestionnaireExpand, SetFullscreen True )
+    in
+    div [ class "questionnaire__toolbar" ]
+        [ div [ class "questionnaire__toolbar__left" ]
+            [ viewDropdown
+            , importersDropdown
+            , actionsDropdown
+            ]
+        , div [ class "questionnaire__toolbar__right" ]
+            [ navButton warningsButton warningsButtonVisible
+            , navButton (Lazy.lazy todosButton model.questionnaire) todosButtonVisible
+            , navButton (Lazy.lazy commentsOverviewButton model.questionnaire) commentsOverviewButtonVisible
+            , navButton versionHistoryButton versionHistoryButtonVisible
+            , navButton searchButton searchButtonVisible
+            , div [ class "item-group" ]
+                [ a [ class "item", onClick expandMsg ] [ expandIcon ]
+                ]
+            ]
+        ]
+
+
+
+-- QUESTIONNAIRE - LEFT PANEL
+
+
+viewQuestionnaireLeftPanel : AppState -> Config msg -> Model -> Html Msg
+viewQuestionnaireLeftPanel appState cfg model =
+    div [ class "questionnaire__left-panel" ]
+        [ viewQuestionnaireLeftPanelPhaseSelection appState cfg model
+        , viewQuestionnaireLeftPanelChapters appState model
+        ]
+
+
+
+-- QUESTIONNAIRE - LEFT PANEL - PHASE SELECTION
+
+
+viewQuestionnaireLeftPanelPhaseSelection : AppState -> Config msg -> Model -> Html Msg
+viewQuestionnaireLeftPanelPhaseSelection appState cfg model =
+    let
+        phases =
+            KnowledgeModel.getPhases model.questionnaire.knowledgeModel
+
+        selectedPhaseTitle =
+            List.find ((==) (Maybe.map Uuid.toString model.questionnaire.phaseUuid) << Just << .uuid) phases
+                |> Maybe.orElse (List.head phases)
+                |> Maybe.unwrap "" .title
+
+        phaseButtonOnClick =
+            if cfg.features.readonly then
+                []
+
+            else
+                [ onClick (PhaseModalUpdate True Nothing) ]
+
+        phaseButton =
+            button
+                ([ class "btn btn-input w-100"
+                 , dataCy "phase-selection"
+                 , disabled cfg.features.readonly
+                 ]
+                    ++ phaseButtonOnClick
+                )
+                [ text selectedPhaseTitle ]
+
+        currentPhaseIndex =
+            ProjectQuestionnaire.getCurrentPhaseIndex model.questionnaire
+
+        progress =
+            toFloat currentPhaseIndex / toFloat (List.length phases - 1)
+
+        phaseProgressPoint i _ =
+            div
+                [ class "phase-progress__point"
+                , classList
+                    [ ( "phase-progress__point--active", i <= currentPhaseIndex )
+                    , ( "phase-progress__point--current", i == currentPhaseIndex )
+                    ]
+                ]
+                []
+
+        phaseProgressPoints =
+            List.indexedMap phaseProgressPoint phases
+
+        phaseProgress =
+            div (class "phase-progress" :: phaseButtonOnClick)
+                (div [ class "phase-progress__bar" ]
+                    [ div
+                        [ class "phase-progress__fill"
+                        , style "width" (String.fromFloat (progress * 100) ++ "%")
+                        ]
+                        []
+                    ]
+                    :: phaseProgressPoints
+                )
+    in
+    Html.viewIf (not (List.isEmpty phases)) <|
+        div [ class "questionnaire__left-panel__phase" ]
+            [ label [] [ text (gettext "Current phase" appState.locale) ]
+            , phaseButton
+            , phaseProgress
+            ]
+
+
+viewPhaseModal : AppState -> Model -> Html Msg
+viewPhaseModal appState model =
+    let
+        phases =
+            KnowledgeModel.getPhases model.questionnaire.knowledgeModel
+
+        currentPhaseIndex =
+            ProjectQuestionnaire.getCurrentPhaseIndex model.questionnaire
+
+        viewPhase : Int -> Phase -> Html Msg
+        viewPhase index phase =
+            let
+                descriptionElement =
+                    case phase.description of
+                        Just description ->
+                            div [ class "phase-description" ] [ text description ]
+
+                        Nothing ->
+                            Html.nothing
+
+                clickAttribute =
+                    if index == currentPhaseIndex then
+                        []
+
+                    else
+                        [ onClick (PhaseModalUpdate False (Uuid.fromString phase.uuid)) ]
+            in
+            div
+                ([ class "phase"
+                 , classList
+                    [ ( "phase-done", index < currentPhaseIndex )
+                    , ( "phase-active", index == currentPhaseIndex )
+                    ]
+                 , dataCy "phase-option"
+                 ]
+                    ++ clickAttribute
+                )
+                [ div [ class "phase-title" ] [ text phase.title ]
+                , descriptionElement
+                ]
+    in
+    Modal.simpleWithAttrs [ class "PhaseSelectionModal modal-wide" ]
+        { modalContent =
+            [ div [ class "modal-header" ]
+                [ h5 [ class "modal-title" ] [ text (gettext "Select phase" appState.locale) ]
+                , button
+                    [ class "close"
+                    , onClick (PhaseModalUpdate False Nothing)
+                    ]
+                    [ faClose ]
+                ]
+            , div [ class "modal-body" ]
+                [ div [] (List.indexedMap viewPhase phases)
+                ]
+            ]
+        , enterMsg = Nothing
+        , escMsg = Just (PhaseModalUpdate False Nothing)
+        , visible = model.phaseModalOpen
+        , dataCy = "phase-selection"
+        }
+
+
+
+-- QUESTIONNAIRE - LEFT PANEL - CHAPTERS
+
+
+viewQuestionnaireLeftPanelChapters : AppState -> Model -> Html Msg
+viewQuestionnaireLeftPanelChapters appState model =
+    let
+        mbActiveChapterUuid =
+            case model.activePage of
+                PageChapter chapterUuid ->
+                    Just chapterUuid
+
+                _ ->
+                    Nothing
+
+        navigationTreeConfig =
+            { activeChapterUuid = mbActiveChapterUuid
+            , nonDesirableQuestions = model.viewSettings.nonDesirableQuestions
+            , questionnaire = model.questionnaire
+            , openChapter = SetActivePage << PageChapter
+            , scrollToPath = ScrollToPath
+            , collapseItem = CollapseItem
+            , expandItem = ExpandItem
+            , collapsedItems = model.collapsedItems
+            }
+    in
+    NavigationTree.view appState navigationTreeConfig
+
+
+
+-- QUESTIONNAIRE - RIGHT PANEL
+
+
+viewQuestionnaireRightPanel : AppState -> Config msg -> Model -> Html msg
+viewQuestionnaireRightPanel appState cfg model =
+    let
+        wrapPanel content =
+            div [ class "questionnaire__right-panel" ]
+                content
+    in
+    case model.rightPanel of
+        RightPanel.None ->
+            Html.nothing
+
+        RightPanel.Search ->
+            let
+                viewConfig =
+                    { scrollToPathMsg = cfg.wrapMsg << ScrollToPath
+                    , scrollToQuestionMsg = cfg.wrapMsg << ScrollToQuestion
+                    , openChapterMsg = cfg.wrapMsg << OpenChapter
+                    , wrapMsg = cfg.wrapMsg << SearchPanelMsg
+                    }
+            in
+            Html.viewIf (Feature.projectSearch model.questionnaire) <|
+                wrapPanel [ SearchPanel.view appState viewConfig model.searchPanelModel ]
+
+        RightPanel.TODOs ->
+            Html.viewIf (Feature.projectTodos appState model.questionnaire) <|
+                wrapPanel [ Html.map cfg.wrapMsg <| viewQuestionnaireRightPanelTodos appState model ]
+
+        RightPanel.CommentsOverview ->
+            Html.viewIf (Feature.projectCommentAdd appState model.questionnaire) <|
+                wrapPanel [ Html.map cfg.wrapMsg <| viewQuestionnaireRightPanelCommentsOverview appState model ]
+
+        RightPanel.Comments path ->
+            Html.viewIf (Feature.projectCommentAdd appState model.questionnaire) <|
+                wrapPanel [ Html.map cfg.wrapMsg <| viewQuestionnaireRightPanelComments appState model path ]
+
+        RightPanel.VersionHistory ->
+            let
+                loadMoreMsg =
+                    if model.projectEventsLoadMore then
+                        Just (cfg.wrapMsg LoadMoreQuestionnaireEvents)
+
+                    else
+                        Nothing
+
+                historyCfg =
+                    { questionnaire = model.questionnaire
+                    , wrapMsg = cfg.wrapMsg << HistoryMsg
+                    , scrollMsg = cfg.wrapMsg << ScrollToPath
+                    , createVersionMsg = cfg.wrapMsg << CreateNamedVersion
+                    , renameVersionMsg = cfg.wrapMsg << RenameVersion
+                    , deleteVersionMsg = cfg.wrapMsg << DeleteVersion
+                    , previewQuestionnaireEventMsg = cfg.previewQuestionnaireEventMsg
+                    , revertQuestionnaireMsg = cfg.revertQuestionnaireMsg
+                    , loadMoreMsg = loadMoreMsg
+                    , loadingMore = model.projectEventsExtraLoading
+                    }
+
+                versionsAndEvents =
+                    ActionResult.combine model.projectVersions model.projectEvents
+            in
+            Html.viewIf (Feature.projectVersionHistory appState model.questionnaire) <|
+                wrapPanel
+                    [ History.view appState historyCfg model.historyModel versionsAndEvents
+                    , Html.map (cfg.wrapMsg << VersionModalMsg) <| VersionModal.view appState model.versionModalModel
+                    , Html.map (cfg.wrapMsg << DeleteVersionModalMsg) <| DeleteVersionModal.view appState model.deleteVersionModalModel
+                    ]
+
+        RightPanel.Warnings ->
+            if ProjectQuestionnaire.warningsLength model.questionnaire > 0 then
+                wrapPanel <|
+                    [ Html.map cfg.wrapMsg <| viewQuestionnaireRightPanelWarnings model ]
+
+            else
+                Html.nothing
+
+        RightPanel.PluginQuestionAction data ->
+            case ( cfg.features.pluginsEnabled, cfg.projectCommon ) of
+                ( True, Just projectCommon ) ->
+                    wrapPanel <|
+                        [ Html.Keyed.node "div"
+                            []
+                            [ ( data.questionPath
+                              , PluginView.view appState
+                                    data.plugin.uuid
+                                    data.connector.element
+                                    [ PluginElement.projectValue projectCommon
+                                    , PluginElement.questionValue data.question
+                                    , PluginElement.questionPathValue data.questionPath
+                                    , PluginElement.onActionClose (cfg.wrapMsg (SetRightPanel RightPanel.None))
+                                    ]
+                              )
+                            ]
+                        ]
+
+                _ ->
+                    Html.nothing
+
+
+
+-- QUESTIONNAIRE - RIGHT PANEL - TODOS
+
+
+viewQuestionnaireRightPanelTodos : AppState -> Model -> Html Msg
+viewQuestionnaireRightPanelTodos appState model =
+    let
+        todos =
+            ProjectQuestionnaire.getTodos model.questionnaire
+
+        viewTodoGroup group =
+            div []
+                [ strong [] [ text group.chapter.title ]
+                , ul [ class "fa-ul" ] (List.map viewTodo group.todos)
+                ]
+
+        viewTodo todo =
+            li []
+                [ span [ class "fa-li" ] [ fa "fas fa-edit" ]
+                , a [ onClick (ScrollToPath todo.path) ] [ text <| Question.getTitle todo.question ]
+                ]
+    in
+    if List.isEmpty todos then
+        div [ class "todos todos-empty" ] <|
+            [ illustratedMessage Undraw.feelingHappy (gettext "All TODOs have been completed." appState.locale) ]
+
+    else
+        div [ class "todos" ] <|
+            List.map viewTodoGroup (ProjectTodoGroup.groupTodos todos)
+
+
+
+-- QUESTIONNAIRE - RIGHT PANEL - WARNINGS
+
+
+viewQuestionnaireRightPanelWarnings : Model -> Html Msg
+viewQuestionnaireRightPanelWarnings model =
+    let
+        warnings =
+            ProjectQuestionnaire.getWarnings model.questionnaire
+
+        viewWarningGroup group =
+            div []
+                [ strong [] [ text group.chapter.title ]
+                , ul [ class "fa-ul" ] (List.map viewTodo group.todos)
+                ]
+
+        viewTodo todo =
+            li []
+                [ span [ class "fa-li" ] [ fa "fas fa-exclamation-triangle" ]
+                , a [ onClick (ScrollToPath todo.path) ] [ text <| Question.getTitle todo.question ]
+                ]
+    in
+    div [ class "todos" ] <|
+        List.map viewWarningGroup (ProjectTodoGroup.groupTodos warnings)
+
+
+
+-- QUESTIONNAIRE - RIGHT PANEL - COMMENTS OVERVIEW
+
+
+viewQuestionnaireRightPanelCommentsOverview : AppState -> Model -> Html Msg
+viewQuestionnaireRightPanelCommentsOverview appState model =
+    let
+        viewChapterComments group =
+            let
+                anyUnresolvedComments =
+                    List.any (\c -> c.unresolvedComments > 0) group.comments
+            in
+            if not model.commentsViewResolved && not anyUnresolvedComments then
+                Html.nothing
+
+            else
+                div []
+                    [ strong [] [ text group.chapter.title ]
+                    , ul [ class "fa-ul" ] (List.map viewQuestionComments group.comments)
+                    ]
+
+        viewQuestionComments comment =
+            if not model.commentsViewResolved && comment.unresolvedComments == 0 then
+                Html.nothing
+
+            else
+                let
+                    resolvedCommentCount =
+                        if model.commentsViewResolved && comment.resolvedComments > 0 then
+                            Badge.success [ class "rounded-pill ms-1" ]
+                                [ fa "fas fa-check"
+                                , text (String.fromInt comment.resolvedComments)
+                                ]
+
+                        else
+                            Html.nothing
+                in
+                li []
+                    [ span [ class "fa-li" ] [ fa "far fa-comment" ]
+                    , a [ onClick (OpenComments False comment.path) ]
+                        [ span [ class "question" ] [ text <| Question.getTitle comment.question ]
+                        , span [ class "text-nowrap" ]
+                            [ Badge.light [ class "rounded-pill" ] [ text (String.fromInt comment.unresolvedComments) ]
+                            , resolvedCommentCount
+                            ]
+                        ]
+                    ]
+
+        groupComments comments =
+            let
+                fold comment acc =
+                    if List.any (\group -> group.chapter.uuid == comment.chapter.uuid) acc then
+                        List.map
+                            (\group ->
+                                if group.chapter.uuid == comment.chapter.uuid then
+                                    { group | comments = group.comments ++ [ comment ] }
+
+                                else
+                                    group
+                            )
+                            acc
+
+                    else
+                        acc ++ [ { chapter = comment.chapter, comments = [ comment ] } ]
+            in
+            List.foldl fold [] comments
+
+        questionnaireComments =
+            ProjectQuestionnaire.getComments model.questionnaire
+
+        commentsEmpty =
+            if model.commentsViewResolved then
+                List.isEmpty questionnaireComments
+
+            else
+                questionnaireComments
+                    |> List.map (\group -> group.unresolvedComments)
+                    |> List.sum
+                    |> (==) 0
+
+        content =
+            if commentsEmpty then
+                [ div [ class "alert alert-info" ]
+                    [ p
+                        []
+                        (String.formatHtml (gettext "Click the %s icon to add new comments to a question." appState.locale) [ faQuestionnaireComments ])
+                    ]
+                ]
+
+            else
+                List.map viewChapterComments (groupComments questionnaireComments)
+    in
+    div [ class "comments-overview Comments" ]
+        (viewCommentsResolvedSelect appState model :: content)
+
+
+viewCommentsResolvedSelect : AppState -> Model -> Html Msg
+viewCommentsResolvedSelect appState model =
+    let
+        questionnaireComments =
+            ProjectQuestionnaire.getComments model.questionnaire
+
+        anyResolvedComments =
+            List.any ((<) 0 << .resolvedComments) questionnaireComments
+    in
+    Html.viewIf anyResolvedComments <|
+        div [ class "form-check" ]
+            [ label [ class "form-check-label form-check-toggle" ]
+                [ input [ type_ "checkbox", class "form-check-input", onCheck CommentsViewResolved, checked model.commentsViewResolved ] []
+                , span [] [ text (gettext "View resolved comments" appState.locale) ]
+                ]
+            ]
+
+
+
+-- QUESTIONNAIRE - RIGHT PANEL - COMMENTS
+
+
+viewQuestionnaireRightPanelComments : AppState -> Model -> String -> Html Msg
+viewQuestionnaireRightPanelComments appState model path =
+    ActionResultBlock.view
+        { viewContent = viewQuestionnaireRightPanelCommentsLoaded appState model path
+        , actionResult = Maybe.withDefault ActionResult.Loading (Dict.get path model.commentThreadsMap)
+        , locale = appState.locale
+        }
+
+
+viewQuestionnaireRightPanelCommentsLoaded : AppState -> Model -> String -> List CommentThread -> Html Msg
+viewQuestionnaireRightPanelCommentsLoaded appState model path commentThreads =
+    let
+        filter =
+            if model.commentsViewResolved then
+                always True
+
+            else
+                \group -> group.unresolvedComments > 0
+
+        questionnaireComments =
+            ProjectQuestionnaire.getComments model.questionnaire
+
+        comments =
+            questionnaireComments
+                |> List.filter filter
+                |> List.map .path
+
+        nextPrevNavigation =
+            if List.length comments > 1 then
+                case List.elemIndex path comments of
+                    Just index ->
+                        let
+                            previousCommentsPath =
+                                Maybe.withDefault "" <|
+                                    List.findPreviousInfinite path comments
+
+                            nextCommentsPath =
+                                Maybe.withDefault "" <|
+                                    List.findNextInfinite path comments
+
+                            commentCountTooltip =
+                                if model.commentsViewResolved then
+                                    gettext "Resolved and unresolved comments" appState.locale
+
+                                else
+                                    gettext "Unresolved comments" appState.locale
+
+                            numberText =
+                                span
+                                    (class "text-muted"
+                                        :: dataCy "comments_nav_count"
+                                        :: tooltip commentCountTooltip
+                                    )
+                                    [ text
+                                        (String.format "%s/%s"
+                                            [ String.fromInt (index + 1)
+                                            , String.fromInt (List.length comments)
+                                            ]
+                                        )
+                                    ]
+                        in
+                        div
+                            [ class "comments-navigation"
+                            ]
+                            [ a
+                                [ onClick (OpenComments False previousCommentsPath)
+                                , dataCy "comments_nav_prev"
+                                ]
+                                [ fa "fas fa-arrow-left me-2"
+                                , text (gettext "Previous" appState.locale)
+                                ]
+                            , numberText
+                            , a
+                                [ onClick (OpenComments False nextCommentsPath)
+                                , dataCy "comments_nav_next"
+                                ]
+                                [ text (gettext "Next" appState.locale)
+                                , fa "fas fa-arrow-right ms-2"
+                                ]
+                            ]
+
+                    Nothing ->
+                        Html.nothing
+
+            else
+                Html.nothing
+
+        navigationView =
+            if Feature.projectCommentPrivate appState model.questionnaire then
+                viewCommentsNavigation appState model commentThreads
+
+            else
+                Html.nothing
+
+        editorNoteExplanation =
+            if model.commentsViewPrivate then
+                div [ class "alert alert-editor-notes" ]
+                    [ i [ class "fa fas fa-lock" ] []
+                    , span [ class "ms-2" ] [ text (gettext "Editor notes are only visible to project Editors and Owners." appState.locale) ]
+                    ]
+
+            else
+                Html.nothing
+
+        viewFilteredCommentThreads condition =
+            commentThreads
+                |> List.filter (\thread -> thread.private == model.commentsViewPrivate)
+                |> List.filter condition
+                |> List.sortWith CommentThread.compare
+                |> List.map (viewCommentThread appState model path)
+
+        resolvedThreadsView =
+            if model.commentsViewResolved then
+                div [] (viewFilteredCommentThreads (\thread -> thread.resolved))
+
+            else
+                Html.nothing
+
+        commentThreadsView =
+            div [] (viewFilteredCommentThreads (\thread -> not thread.resolved))
+
+        newThreadForm =
+            viewCommentReplyForm appState
+                { submitText = gettext "Comment" appState.locale
+                , placeholderText = gettext "Create a new comment..." appState.locale
+                , model = model
+                , path = path
+                , mbThreadUuid = Nothing
+                , private = model.commentsViewPrivate
+                }
+    in
+    div [ class "Comments" ]
+        [ nextPrevNavigation
+        , viewCommentsResolvedSelect appState model
+        , navigationView
+        , resolvedThreadsView
+        , commentThreadsView
+        , editorNoteExplanation
+        , newThreadForm
+        ]
+
+
+viewCommentsNavigation : AppState -> Model -> List CommentThread -> Html Msg
+viewCommentsNavigation appState model commentThreads =
+    let
+        threadCount privatePredicate resolvedPredicate =
+            List.filter (\c -> privatePredicate c && resolvedPredicate c) commentThreads
+                |> List.map (List.length << .comments)
+                |> List.sum
+
+        publicThreadsCount =
+            threadCount (not << .private) (not << .resolved)
+
+        privateThreadsCount =
+            threadCount .private (not << .resolved)
+
+        resolvedPublicThreadsCount =
+            threadCount (not << .private) .resolved
+
+        resolvedPrivateThreadsCount =
+            threadCount .private .resolved
+
+        toBadge count =
+            if count == 0 then
+                Html.nothing
+
+            else
+                Badge.light [ class "rounded-pill" ] [ text (String.fromInt count) ]
+
+        toResolvedBadge count =
+            if model.commentsViewResolved && count > 0 then
+                Badge.success [ class "rounded-pill" ]
+                    [ fa "fas fa-check"
+                    , text (String.fromInt count)
+                    ]
+
+            else
+                Html.nothing
+    in
+    ul [ class "nav nav-underline-tabs" ]
+        [ li [ class "nav-item" ]
+            [ a
+                [ class "nav-link"
+                , classList [ ( "active", not model.commentsViewPrivate ) ]
+                , onClick (CommentsViewPrivate False)
+                , dataCy "comments_nav_comments"
+                ]
+                [ span [ attribute "data-content" (gettext "Comments" appState.locale) ]
+                    [ text (gettext "Comments" appState.locale) ]
+                , toBadge publicThreadsCount
+                , toResolvedBadge resolvedPublicThreadsCount
+                ]
+            ]
+        , li [ class "nav-item" ]
+            [ a
+                [ class "nav-link nav-link-editor-notes"
+                , classList [ ( "active", model.commentsViewPrivate ) ]
+                , onClick (CommentsViewPrivate True)
+                , dataCy "comments_nav_private-notes"
+                ]
+                [ span [ attribute "data-content" (gettext "Editor notes" appState.locale) ]
+                    [ text (gettext "Editor notes" appState.locale) ]
+                , toBadge privateThreadsCount
+                , toResolvedBadge resolvedPrivateThreadsCount
+                ]
+            ]
+        ]
+
+
+viewCommentThread : AppState -> Model -> String -> CommentThread -> Html Msg
+viewCommentThread appState model path commentThread =
+    let
+        comments =
+            List.sortWith Comment.compare commentThread.comments
+
+        deleteOverlay =
+            if model.commentDeleting == Maybe.map .uuid (List.head comments) then
+                viewCommentDeleteOverlay appState
+                    { deleteMsg = CommentThreadDelete path commentThread
+                    , deleteText = gettext "Delete this comment thread?" appState.locale
+                    , extraClass = "CommentDeleteOverlay--Thread"
+                    }
+
+            else
+                Html.nothing
+
+        replyForm =
+            if commentThread.resolved then
+                Html.nothing
+
+            else
+                viewCommentReplyForm appState
+                    { submitText = gettext "Reply" appState.locale
+                    , placeholderText = gettext "Reply..." appState.locale
+                    , model = model
+                    , path = path
+                    , mbThreadUuid = Just commentThread.uuid
+                    , private = commentThread.private
+                    }
+
+        assignedHeader =
+            case commentThread.assignedTo of
+                Just assignedTo ->
+                    let
+                        assignedToYou =
+                            Just assignedTo.uuid == Maybe.map .uuid appState.config.user
+
+                        assignedContent =
+                            if assignedToYou then
+                                [ fa "fas fa-user-pen fa-fw me-1"
+                                , text (gettext "Assigned to you" appState.locale)
+                                ]
+
+                            else
+                                [ fa "fas fa-user-check fa-fw me-1"
+                                , text (String.format (gettext "Assigned to %s" appState.locale) [ User.fullName assignedTo ])
+                                ]
+                    in
+                    div
+                        [ class "CommentThread__AssignedHeader"
+                        , classList [ ( "CommentThread__AssignedHeader--You", assignedToYou ) ]
+                        ]
+                        assignedContent
+
+                Nothing ->
+                    Html.nothing
+
+        commentViews =
+            List.indexedMap (viewComment appState model path commentThread) comments
+    in
+    div
+        [ class "CommentThread"
+        , classList
+            [ ( "CommentThread--Resolved", commentThread.resolved )
+            , ( "CommentThread--Private", commentThread.private )
+            ]
+        , attribute "data-comment-thread-uuid" (Uuid.toString commentThread.uuid)
+        ]
+        (assignedHeader
+            :: commentViews
+            ++ [ replyForm, deleteOverlay ]
+        )
+
+
+viewComment : AppState -> Model -> String -> CommentThread -> Int -> Comment -> Html Msg
+viewComment appState model path commentThread index comment =
+    let
+        commentHeader =
+            viewCommentHeader appState model path commentThread index comment
+
+        mbEditValue =
+            Dict.get (Uuid.toString comment.uuid) model.commentEditInputs
+
+        content =
+            case mbEditValue of
+                Just editValue ->
+                    div []
+                        [ resizableTextarea 2
+                            editValue
+                            [ class "form-control mb-1", onInput (CommentEditInput comment.uuid) ]
+                            []
+                        , div []
+                            [ button
+                                [ class "btn btn-primary btn-sm me-1"
+                                , disabled (String.isEmpty editValue)
+                                , onClick (CommentEditSubmit path commentThread.uuid comment.uuid editValue commentThread.private)
+                                ]
+                                [ text (gettext "Edit" appState.locale) ]
+                            , button
+                                [ class "btn btn-outline-secondary btn-sm"
+                                , onClick (CommentEditCancel comment.uuid)
+                                ]
+                                [ text (gettext "Cancel" appState.locale) ]
+                            ]
+                        ]
+
+                Nothing ->
+                    div [] [ Markdown.toHtml [ class "Comment_MD" ] comment.text ]
+
+        deleteOverlay =
+            if index /= 0 && model.commentDeleting == Just comment.uuid then
+                viewCommentDeleteOverlay appState
+                    { deleteMsg = CommentDeleteSubmit path commentThread.uuid comment.uuid commentThread.private
+                    , deleteText = gettext "Delete this comment?" appState.locale
+                    , extraClass = "CommentDeleteOverlay--Comment"
+                    }
+
+            else
+                Html.nothing
+    in
+    div [ class "Comment" ]
+        [ commentHeader
+        , content
+        , deleteOverlay
+        ]
+
+
+viewCommentHeader : AppState -> Model -> String -> CommentThread -> Int -> Comment -> Html Msg
+viewCommentHeader appState model path commentThread index comment =
+    let
+        resolveAction =
+            if index == 0 && Feature.projectCommentThreadResolve appState model.questionnaire commentThread then
+                a
+                    ([ class "ms-1"
+                     , onClick (CommentThreadResolve path commentThread)
+                     , dataCy "comments_comment_resolve"
+                     ]
+                        ++ tooltipLeft (gettext "Resolve comment thread" appState.locale)
+                    )
+                    [ faQuestionnaireCommentsResolve ]
+
+            else
+                Html.nothing
+
+        assignAction =
+            if index == 0 && Feature.projectCommentThreadAssign appState model.questionnaire commentThread then
+                let
+                    viewConfig =
+                        { wrapMsg = UserSuggestionDropdownMsg (Uuid.toString comment.uuid) commentThread.uuid commentThread.private
+                        , selectMsg = CommentThreadAssign path commentThread << Just
+                        }
+
+                    userSuggestionDropdownModel =
+                        Dict.get (Uuid.toString comment.uuid) model.userSuggestionDropdownModels
+                            |> Maybe.withDefault (UserSuggestionDropdown.init model.uuid commentThread.uuid commentThread.private)
+                in
+                UserSuggestionDropdown.view viewConfig appState userSuggestionDropdownModel
+
+            else
+                Html.nothing
+
+        removeAssignedAction =
+            Dropdown.anchorItem
+                [ onClick (CommentThreadAssign path commentThread Nothing) ]
+                [ text (gettext "Remove assignment" appState.locale) ]
+
+        removeAssignedActionVisible =
+            index == 0 && Feature.projectCommentThreadRemoveAssign appState model.questionnaire commentThread
+
+        reopenAction =
+            Dropdown.anchorItem
+                [ onClick (CommentThreadReopen path commentThread) ]
+                [ text (gettext "Reopen" appState.locale) ]
+
+        reopenActionVisible =
+            index == 0 && Feature.projectCommentThreadReopen appState model.questionnaire commentThread
+
+        editAction =
+            Dropdown.anchorItem
+                [ onClick (CommentEditInput comment.uuid comment.text) ]
+                [ text (gettext "Edit" appState.locale) ]
+
+        editActionVisible =
+            Feature.projectCommentEdit appState model.questionnaire commentThread comment
+
+        deleteAction =
+            Dropdown.anchorItem
+                [ onClick (CommentDelete (Just comment.uuid))
+                , dataCy "comments_comment_menu_delete"
+                ]
+                [ text (gettext "Delete" appState.locale) ]
+
+        deleteActionVisible =
+            (index == 0 && Feature.projectCommentThreadDelete appState model.questionnaire commentThread)
+                || (index /= 0 && Feature.projectCommentDelete appState model.questionnaire commentThread comment)
+
+        actions =
+            []
+                |> List.insertIf removeAssignedAction removeAssignedActionVisible
+                |> List.insertIf reopenAction reopenActionVisible
+                |> List.insertIf editAction editActionVisible
+                |> List.insertIf deleteAction deleteActionVisible
+
+        dropdown =
+            if List.isEmpty actions then
+                Html.nothing
+
+            else
+                let
+                    dropdownState =
+                        Dict.get (Uuid.toString comment.uuid) model.commentDropdownStates
+                            |> Maybe.withDefault Dropdown.initialState
+                in
+                Dropdown.dropdown dropdownState
+                    { options = [ Dropdown.attrs [ class "ListingDropdown", dataCy "comments_comment_menu" ], Dropdown.alignMenuRight ]
+                    , toggleMsg = CommentDropdownMsg (Uuid.toString comment.uuid)
+                    , toggleButton =
+                        Dropdown.toggle [ Button.roleLink ]
+                            [ faListingActions ]
+                    , items = actions
+                    }
+
+        createdLabel =
+            TimeUtils.toReadableDateTime appState.timeZone comment.createdAt
+
+        editedLabel =
+            if comment.createdAt /= comment.updatedAt then
+                span (tooltip (TimeUtils.toReadableDateTime appState.timeZone comment.updatedAt))
+                    [ text <| " (" ++ gettext "edited" appState.locale ++ ")" ]
+
+            else
+                Html.nothing
+
+        userForIcon =
+            case comment.createdBy of
+                Just createdBy ->
+                    { gravatarHash = createdBy.gravatarHash
+                    , imageUrl = createdBy.imageUrl
+                    }
+
+                Nothing ->
+                    { gravatarHash = ""
+                    , imageUrl = Nothing
+                    }
+    in
+    div [ class "Comment__Header" ]
+        [ UserIcon.view userForIcon
+        , div [ class "Comment__Header__User" ]
+            [ strong [ class "Comment__Header__User__Name" ]
+                [ text (Maybe.unwrap (gettext "Anonymous user" appState.locale) User.fullName comment.createdBy)
+                ]
+            , span [ class "Comment__Header__User__Time" ] [ text createdLabel, editedLabel ]
+            ]
+        , resolveAction
+        , assignAction
+        , dropdown
+        ]
+
+
+viewCommentReplyForm :
+    AppState
+    ->
+        { submitText : String
+        , placeholderText : String
+        , model : Model
+        , path : String
+        , mbThreadUuid : Maybe Uuid
+        , private : Bool
+        }
+    -> Html Msg
+viewCommentReplyForm appState { submitText, placeholderText, model, path, mbThreadUuid, private } =
+    let
+        commentValue =
+            model.commentInputs
+                |> Dict.get (path ++ "-" ++ Maybe.unwrap "0" Uuid.toString mbThreadUuid)
+                |> Maybe.withDefault ""
+
+        cyFormType base =
+            let
+                privateType =
+                    if private then
+                        "private"
+
+                    else
+                        "public"
+            in
+            case mbThreadUuid of
+                Just _ ->
+                    base ++ "_reply_" ++ privateType
+
+                Nothing ->
+                    base ++ "_new_" ++ privateType
+
+        ( newThreadFormSubmit, shortcuts ) =
+            if String.isEmpty commentValue then
+                ( Html.nothing, [] )
+
+            else
+                let
+                    submitMsg =
+                        CommentSubmit path mbThreadUuid commentValue private
+                in
+                ( div []
+                    [ button
+                        [ class "btn btn-primary btn-sm me-1"
+                        , onClick (CommentSubmit path mbThreadUuid commentValue private)
+                        , dataCy (cyFormType "comments_reply-form_submit")
+                        ]
+                        [ text submitText ]
+                    , button
+                        [ class "btn btn-outline-secondary btn-sm"
+                        , onClick (CommentInput path mbThreadUuid "")
+                        , dataCy (cyFormType "comments_reply-form_cancel")
+                        ]
+                        [ text (gettext "Cancel" appState.locale) ]
+                    ]
+                , [ Shortcut.submitShortcut appState.navigator.isMac submitMsg ]
+                )
+    in
+    Shortcut.shortcutElement shortcuts
+        [ class "CommentReplyForm", classList [ ( "CommentReplyForm--Private", private ) ] ]
+        [ resizableTextarea 2
+            commentValue
+            [ class "form-control"
+            , placeholder placeholderText
+            , onInput (CommentInput path mbThreadUuid)
+            , dataCy (cyFormType "comments_reply-form_input")
+            ]
+            []
+        , newThreadFormSubmit
+        ]
+
+
+viewCommentDeleteOverlay : AppState -> { deleteMsg : Msg, deleteText : String, extraClass : String } -> Html Msg
+viewCommentDeleteOverlay appState { deleteMsg, deleteText, extraClass } =
+    div [ class "CommentDeleteOverlay", class extraClass ]
+        [ div [ class "text-center" ]
+            [ div [ class "mb-2" ] [ text deleteText ]
+            , button
+                [ class "btn btn-danger btn-sm me-2"
+                , onClick deleteMsg
+                , dataCy "comments_delete-modal_delete"
+                ]
+                [ text (gettext "Delete" appState.locale) ]
+            , button [ class "btn btn-secondary btn-sm", onClick (CommentDelete Nothing) ] [ text (gettext "Cancel" appState.locale) ]
+            ]
+        ]
+
+
+
+-- QUESTIONNAIRE -- CONTENT
+
+
+viewQuestionnaireContent : AppState -> Config msg -> Context -> Model -> Html Msg
+viewQuestionnaireContent appState cfg ctx model =
+    let
+        content =
+            case model.activePage of
+                PageChapter chapterUuid ->
+                    case KnowledgeModel.getChapter chapterUuid model.questionnaire.knowledgeModel of
+                        Just chapter ->
+                            viewQuestionnaireContentChapter appState cfg ctx model chapter
+
+                        Nothing ->
+                            Html.nothing
+
+                _ ->
+                    Html.nothing
+    in
+    div [ class "questionnaire__content" ] [ content ]
+
+
+
+-- QUESTIONNAIRE -- CONTENT -- CHAPTER
+
+
+viewQuestionnaireContentChapter : AppState -> Config msg -> Context -> Model -> Chapter -> Html Msg
+viewQuestionnaireContentChapter appState cfg ctx model chapter =
+    let
+        chapters =
+            KnowledgeModel.getChapters model.questionnaire.knowledgeModel
+
+        chapterNumber =
+            chapters
+                |> List.findIndex (.uuid >> (==) chapter.uuid)
+                |> Maybe.unwrap "I" ((+) 1 >> Roman.toRomanNumber)
+
+        questions =
+            KnowledgeModel.getChapterQuestions chapter.uuid model.questionnaire.knowledgeModel
+
+        questionViews =
+            if List.isEmpty questions then
+                let
+                    emptyMessage =
+                        if List.isEmpty model.questionnaire.selectedQuestionTagUuids then
+                            gettext "This chapter contains no questions." appState.locale
+
+                        else
+                            gettext "There are no questions matching the selected question tags." appState.locale
+                in
+                div [ class "flex-grow-1" ]
+                    [ Flash.info emptyMessage
+                    ]
+
+            else
+                let
+                    desirableQuestions =
+                        List.filter (isQuestionDesirable model) questions
+                in
+                if not model.viewSettings.nonDesirableQuestions && List.isEmpty desirableQuestions then
+                    div [ class "flex-grow-1" ]
+                        [ Flash.info (gettext "There are no questions in this phase." appState.locale)
+                        ]
+
+                else
+                    div [ class "flex-grow-1" ] <|
+                        List.indexedMap (viewQuestion appState cfg ctx model [ chapter.uuid ] [ chapterNumber ]) questions
+    in
+    div
+        [ class "questionnaire__form container"
+        , classList [ ( "scroll-target-highlight", model.mbHighlightedPath == Just chapter.uuid ) ]
+        ]
+        [ h2 [] [ text (chapterNumber ++ ". " ++ chapter.title) ]
+        , Markdown.toHtml [ class "chapter-description" ] (Maybe.withDefault "" chapter.text)
+        , questionViews
+        , viewPrevAndNextChapterLinks appState chapters chapter
+        ]
+
+
+viewPrevAndNextChapterLinks : AppState -> List Chapter -> Chapter -> Html Msg
+viewPrevAndNextChapterLinks appState chapters currentChapter =
+    let
+        findPrevChapter cs =
+            case cs of
+                prev :: current :: rest ->
+                    if current.uuid == currentChapter.uuid then
+                        Just prev
+
+                    else
+                        findPrevChapter (current :: rest)
+
+                _ ->
+                    Nothing
+
+        findNextChapter cs =
+            case cs of
+                current :: next :: rest ->
+                    if current.uuid == currentChapter.uuid then
+                        Just next
+
+                    else
+                        findNextChapter (next :: rest)
+
+                _ ->
+                    Nothing
+
+        viewChapterLink cls label icon c =
+            div
+                [ class ("rounded-3 py-3 chapter-link " ++ cls)
+                , onClick (SetActivePage (PageChapter c.uuid))
+                ]
+                [ div [ class "text-lighter" ] [ text label ]
+                , text c.title
+                , icon
+                ]
+
+        viewPrevChapterLink =
+            viewChapterLink "chapter-link-prev"
+                (gettext "Previous chapter" appState.locale)
+                faPrev
+
+        viewNextChapterLink =
+            viewChapterLink "chapter-link-next"
+                (gettext "Next chapter" appState.locale)
+                faNext
+
+        prevChapterLink =
+            findPrevChapter chapters
+                |> Maybe.unwrap Html.nothing viewPrevChapterLink
+
+        nextChapterLink =
+            findNextChapter chapters
+                |> Maybe.unwrap Html.nothing viewNextChapterLink
+    in
+    div [ class "mt-5 pt-3 pb-3 d-flex flex-gap-2" ]
+        [ prevChapterLink, nextChapterLink ]
+
+
+viewQuestion : AppState -> Config msg -> Context -> Model -> List String -> List String -> Int -> Question -> Html Msg
+viewQuestion appState cfg ctx model path humanIdentifiers order question =
+    let
+        newHumanIdentifiers =
+            humanIdentifiers ++ [ String.fromInt (order + 1) ]
+
+        newPath =
+            path ++ [ Question.getUuid question ]
+
+        ( viewInput, viewExtensions ) =
+            case question of
+                OptionsQuestion _ _ ->
+                    viewQuestionOptions appState cfg ctx model newPath newHumanIdentifiers question
+
+                ListQuestion _ _ ->
+                    ( viewQuestionList appState cfg ctx model newPath newHumanIdentifiers question, [] )
+
+                ValueQuestion _ _ ->
+                    ( viewQuestionValue appState cfg model newPath question, [] )
+
+                IntegrationQuestion _ data ->
+                    let
+                        mbIntegration =
+                            KnowledgeModel.getIntegration data.integrationUuid model.questionnaire.knowledgeModel
+                    in
+                    case mbIntegration of
+                        Just (ApiIntegration apiIntegrationData) ->
+                            ( viewQuestionIntegrationApi appState cfg model newPath apiIntegrationData question, [] )
+
+                        _ ->
+                            ( Html.nothing, [] )
+
+                MultiChoiceQuestion _ _ ->
+                    ( viewQuestionMultiChoice appState cfg model newPath question, [] )
+
+                ItemSelectQuestion _ _ ->
+                    ( viewQuestionItemSelect appState cfg model newPath question, [] )
+
+                FileQuestion _ _ ->
+                    ( viewQuestionFile appState cfg model newPath question, [] )
+
+        ( questionClass, questionState ) =
+            case
+                ( ProjectQuestionnaire.hasReply (pathToString newPath) model.questionnaire
+                , isQuestionDesirable model question
+                )
+            of
+                ( True, _ ) ->
+                    ( "question-answered", Answered )
+
+                ( _, True ) ->
+                    ( "question-desirable", Desirable )
+
+                _ ->
+                    if model.viewSettings.nonDesirableQuestions then
+                        ( "question-default", Default )
+
+                    else
+                        ( "question-hidden", Default )
+
+        viewLabel =
+            viewQuestionLabel appState cfg model newPath newHumanIdentifiers question questionState
+
+        viewTags =
+            if model.viewSettings.tags then
+                let
+                    tags =
+                        Question.getTagUuids question
+                            |> List.filterMap (flip KnowledgeModel.getTag model.questionnaire.knowledgeModel)
+                            |> List.sortBy .name
+                in
+                Tag.viewList { showDescription = False } tags
+
+            else
+                Html.nothing
+
+        viewDescription =
+            cfg.renderer.renderQuestionDescription model.viewSettings question
+
+        mbReply =
+            Dict.get (pathToString newPath) model.questionnaire.replies
+
+        viewAnsweredBy =
+            case ( mbReply, model.viewSettings.answeredBy && not (Question.isList question) ) of
+                ( Just reply, True ) ->
+                    let
+                        userName =
+                            case reply.createdBy of
+                                Just userInfo ->
+                                    User.fullName userInfo
+
+                                Nothing ->
+                                    gettext "anonymous user" appState.locale
+
+                        readableTime =
+                            TimeUtils.toReadableDateTime appState.timeZone reply.createdAt
+
+                        timeDiff =
+                            Time.inWordsWithConfig { withAffix = True } (TimeDistance.locale appState.locale) reply.createdAt appState.currentTime
+
+                        time =
+                            span (tooltip readableTime) [ text timeDiff ]
+                    in
+                    div [ class "mt-2", dataCy "questionnaire_answered-by" ]
+                        (String.formatHtml (gettext "Answered %s by %s." appState.locale) [ time, text userName ])
+
+                _ ->
+                    Html.nothing
+
+        content =
+            viewLabel :: viewTags :: viewDescription :: viewInput :: viewAnsweredBy :: viewExtensions
+
+        questionExtraClass =
+            Maybe.withDefault "" (cfg.renderer.getQuestionExtraClass question)
+
+        pathString =
+            pathToString newPath
+    in
+    div
+        [ class ("form-group " ++ questionClass ++ " " ++ questionExtraClass)
+        , classList [ ( "scroll-target-highlight", model.mbHighlightedPath == Just pathString ) ]
+        , id ("question-" ++ Question.getUuid question)
+        , attribute "data-path" pathString
+        ]
+        content
+
+
+viewQuestionLabel : AppState -> Config msg -> Model -> List String -> List String -> Question -> QuestionViewState -> Html Msg
+viewQuestionLabel appState cfg model path humanIdentifiers question questionState =
+    let
+        ( icon, tooltipText ) =
+            case questionState of
+                Answered ->
+                    ( "fas fa-check", gettext "This question has been answered" appState.locale )
+
+                Desirable ->
+                    ( "fas fa-pen", gettext "This question should be answered now" appState.locale )
+
+                Default ->
+                    ( "far fa-hourglass", gettext "This question can be answered later" appState.locale )
+    in
+    label []
+        [ span []
+            [ Badge.secondary
+                [ class "mb-1 me-2 py-1 px-2 fs-6"
+                , classList
+                    [ ( "bg-success", questionState == Answered )
+                    , ( "bg-danger", questionState == Desirable )
+                    ]
+                ]
+                [ span (tooltipRight tooltipText)
+                    [ fa (icon ++ " fa-fw") ]
+                , text (String.join "." humanIdentifiers)
+                ]
+            , span
+                [ classList
+                    [ ( "text-success", questionState == Answered )
+                    , ( "text-danger", questionState == Desirable )
+                    ]
+                ]
+                [ cfg.renderer.renderQuestionLabel question ]
+            ]
+        , span [ class "custom-actions" ]
+            ([ viewTodoAction appState cfg model path
+             , viewCommentAction appState cfg model path
+             , viewFeedbackAction appState cfg model question
+             ]
+                ++ viewPluginQuestionActions appState cfg model question path
+                ++ [ viewCopyLinkAction appState cfg model path
+                   ]
+            )
+        ]
+
+
+viewQuestionOptions : AppState -> Config msg -> Context -> Model -> List String -> List String -> Question -> ( Html Msg, List (Html Msg) )
+viewQuestionOptions appState cfg ctx model path humanIdentifiers question =
+    let
+        answers =
+            KnowledgeModel.getQuestionAnswers (Question.getUuid question) model.questionnaire.knowledgeModel
+
+        selectedAnswerUuid =
+            Dict.get (pathToString path) model.questionnaire.replies
+                |> Maybe.map (.value >> ReplyValue.getAnswerUuid)
+
+        mbSelectedAnswer =
+            List.find (.uuid >> Just >> (==) selectedAnswerUuid) answers
+
+        clearReplyButton =
+            viewQuestionClearButton appState cfg path (Maybe.isJust mbSelectedAnswer)
+
+        advice =
+            Maybe.unwrap Html.nothing cfg.renderer.renderAnswerAdvice mbSelectedAnswer
+
+        followUps =
+            Maybe.unwrap Html.nothing
+                (viewQuestionOptionsFollowUps appState cfg ctx model answers path humanIdentifiers)
+                mbSelectedAnswer
+    in
+    ( div []
+        (List.indexedMap (viewAnswer appState cfg model model.questionnaire.knowledgeModel path selectedAnswerUuid) answers
+            ++ [ clearReplyButton ]
+        )
+    , [ advice, followUps ]
+    )
+
+
+viewQuestionClearButton : AppState -> Config msg -> List String -> Bool -> Html Msg
+viewQuestionClearButton appState cfg path hasAnswer =
+    if cfg.features.readonly || not hasAnswer then
+        Html.nothing
+
+    else
+        a [ class "clear-answer", onClick (ClearReply (pathToString path)) ]
+            [ faQuestionnaireClearAnswer
+            , text (gettext "Clear answer" appState.locale)
+            ]
+
+
+viewQuestionOptionsFollowUps : AppState -> Config msg -> Context -> Model -> List Answer -> List String -> List String -> Answer -> Html Msg
+viewQuestionOptionsFollowUps appState cfg ctx model answers path humanIdentifiers answer =
+    let
+        index =
+            Maybe.unwrap "a" CharIdentifier.fromInt <|
+                List.findIndex (.uuid >> (==) answer.uuid) answers
+
+        newPath =
+            path ++ [ answer.uuid ]
+
+        newHumanIdentifier =
+            humanIdentifiers ++ [ index ]
+
+        questions =
+            KnowledgeModel.getAnswerFollowupQuestions answer.uuid model.questionnaire.knowledgeModel
+
+        followUpQuestions =
+            List.indexedMap (viewQuestion appState cfg ctx model newPath newHumanIdentifier) questions
+    in
+    if List.isEmpty followUpQuestions then
+        Html.nothing
+
+    else
+        let
+            desirableQuestions =
+                List.filter (isQuestionDesirable model) questions
+        in
+        if not model.viewSettings.nonDesirableQuestions && List.isEmpty desirableQuestions then
+            div [ class "followups-group" ]
+                [ Flash.info (gettext "There are no follow up questions in this phase." appState.locale)
+                ]
+
+        else
+            let
+                pathString =
+                    pathToString newPath
+            in
+            if Set.member pathString model.collapsedItems then
+                let
+                    followUpCount =
+                        List.length followUpQuestions
+
+                    expandButton =
+                        a [ onClick (ExpandItem pathString) ]
+                            [ faQuestionnaireItemExpand
+                            , span [ class "ms-1" ] [ text (gettext "Expand" appState.locale) ]
+                            ]
+                in
+                div [ class "followups-group followups-group-collapsed" ] <|
+                    String.formatHtml
+                        (ngettext ( "%s %s follow up question", "%s %s follow up questions" ) followUpCount appState.locale)
+                        [ expandButton
+                        , strong [] [ text (String.fromInt followUpCount) ]
+                        ]
+
+            else
+                let
+                    collapseButton =
+                        a [ onClick (CollapseItem pathString) ]
+                            [ faQuestionnaireItemCollapse
+                            , span [ class "ms-1" ] [ text (gettext "Collapse" appState.locale) ]
+                            ]
+                in
+                div [ class "followups-group" ]
+                    (div [ class "mb-4" ] [ collapseButton ] :: followUpQuestions)
+
+
+viewQuestionMultiChoice : AppState -> Config msg -> Model -> List String -> Question -> Html Msg
+viewQuestionMultiChoice appState cfg model path question =
+    let
+        choices =
+            KnowledgeModel.getQuestionChoices (Question.getUuid question) model.questionnaire.knowledgeModel
+
+        selectedChoicesUuids =
+            Dict.get (pathToString path) model.questionnaire.replies
+                |> Maybe.unwrap [] (.value >> ReplyValue.getChoiceUuids)
+
+        clearReplyButton =
+            viewQuestionClearButton appState cfg path (not (List.isEmpty selectedChoicesUuids))
+    in
+    div [] (List.indexedMap (viewChoice appState cfg path selectedChoicesUuids) choices ++ [ clearReplyButton ])
+
+
+viewQuestionList : AppState -> Config msg -> Context -> Model -> List String -> List String -> Question -> Html Msg
+viewQuestionList appState cfg ctx model path humanIdentifiers question =
+    let
+        expandAndCollapseButtons =
+            let
+                allItemsPaths =
+                    List.map (\uuid -> pathToString (path ++ [ uuid ])) itemUuids
+            in
+            div [ class "mb-3" ]
+                [ a [ onClick (ExpandItems allItemsPaths) ]
+                    [ faQuestionnaireItemExpandAll
+                    , span [ class "ms-1" ] [ text (gettext "Expand all" appState.locale) ]
+                    ]
+                , a
+                    [ onClick (CollapseItems allItemsPaths)
+                    , class "ms-3"
+                    ]
+                    [ faQuestionnaireItemCollapseAll
+                    , span [ class "ms-1" ] [ text (gettext "Collapse all" appState.locale) ]
+                    ]
+                ]
+
+        viewItem =
+            viewQuestionListItem appState cfg ctx model question path humanIdentifiers (List.length itemUuids)
+
+        itemUuids =
+            Dict.get (pathToString path) model.questionnaire.replies
+                |> Maybe.unwrap [] (.value >> ReplyValue.getItemUuids)
+
+        noAnswersInfo =
+            if cfg.features.readonly && List.isEmpty itemUuids then
+                i [] [ text (gettext "There are no answers yet." appState.locale) ]
+
+            else
+                Html.nothing
+    in
+    div []
+        [ Html.viewIf (List.length itemUuids > 1) <| expandAndCollapseButtons
+        , div [] (List.indexedMap viewItem itemUuids)
+        , Html.viewIf (List.length itemUuids > 2) <| expandAndCollapseButtons
+        , viewQuestionListAdd appState cfg itemUuids path
+        , noAnswersInfo
+        ]
+
+
+viewQuestionListAdd : AppState -> Config msg -> List String -> List String -> Html Msg
+viewQuestionListAdd appState cfg itemUuids path =
+    if cfg.features.readonly then
+        Html.nothing
+
+    else
+        button
+            [ class "btn btn-outline-secondary with-icon"
+            , onClick (AddItem (pathToString path) itemUuids)
+            ]
+            [ faAdd
+            , text (gettext "Add" appState.locale)
+            ]
+
+
+viewQuestionListItem : AppState -> Config msg -> Context -> Model -> Question -> List String -> List String -> Int -> Int -> String -> Html Msg
+viewQuestionListItem appState cfg ctx model question path humanIdentifiers itemCount index uuid =
+    let
+        itemPath =
+            path ++ [ uuid ]
+
+        itemPathString =
+            pathToString itemPath
+
+        isCollapsed =
+            Set.member itemPathString model.collapsedItems
+
+        questions =
+            KnowledgeModel.getQuestionItemTemplateQuestions (Question.getUuid question) model.questionnaire.knowledgeModel
+
+        itemQuestions =
+            if isCollapsed then
+                []
+
+            else if List.isEmpty questions then
+                [ Flash.info (gettext "This item contains no questions." appState.locale) ]
+
+            else
+                let
+                    desirableQuestions =
+                        List.filter (isQuestionDesirable model) questions
+                in
+                if not model.viewSettings.nonDesirableQuestions && List.isEmpty desirableQuestions then
+                    [ Flash.info (gettext "There are no questions in this phase." appState.locale) ]
+
+                else
+                    let
+                        newHumanIdentifiers =
+                            humanIdentifiers ++ [ CharIdentifier.fromInt index ]
+                    in
+                    List.indexedMap (viewQuestion appState cfg ctx model itemPath newHumanIdentifiers) questions
+
+        buttons =
+            if cfg.features.readonly then
+                []
+
+            else
+                let
+                    deleteButton =
+                        a
+                            (class "btn-link text-danger"
+                                :: onClick (RemoveItem (pathToString path) uuid)
+                                :: dataCy "item-delete"
+                                :: tooltip (gettext "Delete" appState.locale)
+                            )
+                            [ faDelete ]
+
+                    moveUpButton =
+                        if index == 0 then
+                            Html.nothing
+
+                        else
+                            a
+                                (class "btn-link me-2"
+                                    :: onClick (MoveItemUp (pathToString path) uuid)
+                                    :: dataCy "item-move-up"
+                                    :: tooltip (gettext "Move up" appState.locale)
+                                )
+                                [ faQuestionnaireItemMoveUp ]
+
+                    moveDownButton =
+                        if index == itemCount - 1 then
+                            Html.nothing
+
+                        else
+                            a
+                                (class "btn-link me-2"
+                                    :: onClick (MoveItemDown (pathToString path) uuid)
+                                    :: dataCy "item-move-down"
+                                    :: tooltip (gettext "Move down" appState.locale)
+                                )
+                                [ faQuestionnaireItemMoveDown ]
+                in
+                [ moveUpButton, moveDownButton, deleteButton ]
+
+        linkedItems =
+            ProjectQuestionnaire.getItemUsageInItemSelectQuestions model.questionnaire uuid
+
+        linkedItemsButton =
+            if List.isEmpty linkedItems then
+                Html.nothing
+
+            else
+                let
+                    viewLink ( itemSelectPath, itemSelectLabel ) =
+                        Dropdown.buttonItem [ onClick (ScrollToPath itemSelectPath) ] [ text itemSelectLabel ]
+                in
+                Dropdown.dropdown (Maybe.withDefault Dropdown.initialState (Dict.get uuid model.linkedItemsDropdownStates))
+                    { options = [ Dropdown.alignMenuRight, Dropdown.attrs [ class "me-3" ] ]
+                    , toggleMsg = LinkedItemsDropdownMsg uuid
+                    , toggleButton =
+                        Dropdown.toggle [ Button.attrs [ class "linked-items-dropdown" ] ]
+                            [ fas "fa-arrow-right-arrow-left"
+                            , small [ class "" ] [ text (String.fromInt (List.length linkedItems)) ]
+                            ]
+                    , items =
+                        Dropdown.header [ text (gettext "Used in item select questions:" appState.locale) ]
+                            :: List.map viewLink linkedItems
+                    }
+
+        itemTitle =
+            if isCollapsed then
+                Maybe.unwrap
+                    (i [ class "ms-2 flex-grow-1" ] [ text (String.format (gettext "Item %s" appState.locale) [ String.fromInt (index + 1) ]) ])
+                    (strong [ class "ms-2 flex-grow-1 overflow-hidden text-nowrap" ] << List.singleton << text)
+                    (ProjectQuestionnaire.getItemTitle model.questionnaire itemPath questions)
+
+            else
+                Html.nothing
+
+        ( collapseAttributes, collapseIcon ) =
+            if isCollapsed then
+                ( [ onClick (ExpandItem itemPathString), dataCy "item-expand" ]
+                , span [ class "text-primary" ] [ faQuestionnaireItemExpand ]
+                )
+
+            else
+                ( [ onClick (CollapseItem itemPathString), dataCy "item-collapse" ]
+                , span [ class "text-primary" ] [ faQuestionnaireItemCollapse ]
+                )
+
+        itemHeader =
+            div [ class "item-header d-flex justify-content-between align-items-center" ]
+                [ div (class "flex-grow-1 d-flex me-3 cursor-pointer overflow-hidden" :: collapseAttributes) [ collapseIcon, itemTitle ]
+                , div [ class "d-flex" ] (linkedItemsButton :: buttons)
+                ]
+
+        collapseFooterButton =
+            if isCollapsed then
+                Html.nothing
+
+            else
+                a [ onClick (CollapseItem itemPathString), class "item-collapse-footer-link" ]
+                    [ faQuestionnaireItemCollapse
+                    , span [ class "ms-1" ] [ text (gettext "Collapse" appState.locale) ]
+                    ]
+    in
+    div
+        [ class "item mb-3"
+        , classList [ ( "item-collapsed", isCollapsed ) ]
+        , attribute "data-path" (pathToString itemPath)
+        ]
+        [ div [ class "card bg-light" ]
+            [ div [ class "card-body" ]
+                (itemHeader :: itemQuestions ++ [ collapseFooterButton ])
+            ]
+        ]
+
+
+viewQuestionValue : AppState -> Config msg -> Model -> List String -> Question -> Html Msg
+viewQuestionValue appState cfg model path question =
+    let
+        defaultValue =
+            if Question.getValueType question == Just ColorQuestionValueType then
+                "#000000"
+
+            else
+                ""
+
+        mbAnswer =
+            Dict.get (pathToString path) model.questionnaire.replies
+                |> Maybe.map (.value >> ReplyValue.getStringReply)
+
+        answer =
+            Maybe.withDefault defaultValue mbAnswer
+
+        defaultAttrs =
+            [ class "form-control", value answer ]
+
+        toMsg =
+            SetReply (pathToString path) << createReply appState << StringReply
+
+        extraAttrs =
+            if cfg.features.readonly then
+                [ disabled True ]
+
+            else
+                [ onInput toMsg ]
+
+        warningView regex warning =
+            if not (String.isEmpty answer) && not (Regex.contains regex answer) then
+                Flash.warning warning
+
+            else
+                Html.nothing
+
+        defaultInput =
+            [ input (type_ "text" :: defaultAttrs ++ extraAttrs) [] ]
+
+        readonlyOr otherInput =
+            if cfg.features.readonly then
+                defaultInput
+
+            else
+                otherInput
+
+        inputView =
+            case Question.getValueType question of
+                Just NumberQuestionValueType ->
+                    [ input (type_ "number" :: defaultAttrs ++ extraAttrs) [] ]
+
+                Just DateQuestionValueType ->
+                    readonlyOr [ DatePicker.datePicker [ DatePicker.onChange toMsg, DatePicker.value answer ] ]
+
+                Just DateTimeQuestionValueType ->
+                    readonlyOr [ DatePicker.dateTimePicker [ DatePicker.onChange toMsg, DatePicker.value answer ] ]
+
+                Just TimeQuestionValueType ->
+                    readonlyOr [ DatePicker.timePicker [ DatePicker.onChange toMsg, DatePicker.value answer ] ]
+
+                Just EmailQuestionValueType ->
+                    [ input (type_ "email" :: defaultAttrs ++ extraAttrs) []
+                    , warningView RegexPatterns.email (gettext "This is not a valid email address." appState.locale)
+                    ]
+
+                Just UrlQuestionValueType ->
+                    [ input (type_ "text" :: defaultAttrs ++ extraAttrs) []
+                    , warningView RegexPatterns.url (gettext "This is not a valid URL." appState.locale)
+                    ]
+
+                Just TextQuestionValueType ->
+                    [ resizableTextarea 3 answer (defaultAttrs ++ extraAttrs) [] ]
+
+                Just ColorQuestionValueType ->
+                    [ input (type_ "color" :: defaultAttrs ++ extraAttrs) []
+                    , warningView RegexPatterns.color (gettext "This is not a valid color." appState.locale)
+                    ]
+
+                _ ->
+                    defaultInput
+
+        validationWarning validation =
+            case QuestionValidation.validate appState validation answer of
+                Ok _ ->
+                    Html.nothing
+
+                Err error ->
+                    Flash.warning error
+
+        validationWarnings =
+            case ( Question.getValidations question, mbAnswer ) of
+                ( Just validations, Just _ ) ->
+                    List.map validationWarning validations
+
+                _ ->
+                    []
+
+        clearReplyButton =
+            viewQuestionClearButton appState cfg path (Maybe.isJust mbAnswer)
+    in
+    div [] (inputView ++ validationWarnings ++ [ clearReplyButton ])
+
+
+viewQuestionIntegrationApi : AppState -> Config msg -> Model -> List String -> ApiIntegrationData -> Question -> Html Msg
+viewQuestionIntegrationApi appState cfg model path apiIntegrationData question =
+    let
+        extraArgs =
+            if cfg.features.readonly then
+                [ disabled True ]
+
+            else
+                let
+                    questionValue =
+                        Maybe.unwrap "" ReplyValue.getStringReply mbReplyValue
+
+                    onFocusHandler =
+                        [ onFocus (ShowTypeHints path apiIntegrationData.requestAllowEmptySearch (Question.getUuid question) questionValue) ]
+                in
+                [ onInput (TypeHintInput path apiIntegrationData.allowCustomReply apiIntegrationData.requestAllowEmptySearch << createReply appState << IntegrationReply << PlainType)
+                , onBlur HideTypeHints
+                ]
+                    ++ onFocusHandler
+
+        mbReplyValue =
+            Maybe.map .value <|
+                Dict.get (pathToString path) model.questionnaire.replies
+
+        viewInput currentValue =
+            if apiIntegrationData.allowCustomReply then
+                input ([ class "form-control", type_ "text", value currentValue ] ++ extraArgs) []
+
+            else
+                div [ class "input-group" ]
+                    [ span [ class "input-group-text" ]
+                        [ faSearch ]
+                    , input ([ class "form-control", type_ "text" ] ++ extraArgs) []
+                    ]
+
+        questionInput =
+            case mbReplyValue of
+                Just (IntegrationReply integrationReply) ->
+                    case integrationReply of
+                        PlainType plainValue ->
+                            viewInput plainValue
+
+                        IntegrationType value _ ->
+                            Markdown.toHtml [ class "form-control" ] value
+
+                _ ->
+                    viewInput ""
+
+        typeHintsVisible =
+            Maybe.unwrap False (.path >> (==) path) model.typeHints
+
+        viewTypeHints =
+            if typeHintsVisible then
+                viewQuestionIntegrationTypeHints appState cfg model path
+
+            else
+                Html.nothing
+    in
+    div [ class "question-integration-answer" ]
+        [ questionInput
+        , viewTypeHints
+        , viewQuestionClearButton appState cfg path (Maybe.isJust mbReplyValue)
+        ]
+
+
+viewQuestionIntegrationTypeHints : AppState -> Config msg -> Model -> List String -> Html Msg
+viewQuestionIntegrationTypeHints appState cfg model path =
+    let
+        content =
+            case Maybe.unwrap Unset .hints model.typeHints of
+                Success [] ->
+                    div [ class "info" ]
+                        [ faInfo
+                        , text (gettext "There are no results for your search." appState.locale)
+                        ]
+
+                Success hints ->
+                    ul [ class "integration-typehints-list" ] (List.map (viewQuestionIntegrationTypeHint appState cfg path) hints)
+
+                Loading ->
+                    div [ class "loading" ]
+                        [ faSpinner
+                        , text (gettext "Loading..." appState.locale)
+                        ]
+
+                Error err ->
+                    div [ class "error" ]
+                        [ faError
+                        , text err
+                        ]
+
+                Unset ->
+                    Html.nothing
+    in
+    div [ class "integration-typehints" ] [ content ]
+
+
+viewQuestionIntegrationTypeHint : AppState -> Config msg -> List String -> TypeHint -> Html Msg
+viewQuestionIntegrationTypeHint appState cfg path typeHint =
+    if cfg.features.readonly then
+        Html.nothing
+
+    else
+        li
+            [ class "integration-typehints-list-item"
+            , onMouseDown <| SetReply (pathToString path) <| createReply appState <| IntegrationReply <| IntegrationType typeHint.value typeHint.raw
+            ]
+            [ Markdown.toHtml [ class "item-md" ] (Maybe.withDefault typeHint.value typeHint.valueForSelection)
+            ]
+
+
+viewQuestionItemSelect : AppState -> Config msg -> Model -> List String -> Question -> Html Msg
+viewQuestionItemSelect appState cfg model path question =
+    let
+        mbSelectedItem =
+            Dict.get (pathToString path) model.questionnaire.replies
+                |> Maybe.map (.value >> ReplyValue.getSelectedItemUuid)
+
+        extraAttrs =
+            if cfg.features.readonly then
+                [ disabled True ]
+
+            else
+                [ onChange (SetReply (pathToString path) << createReply appState << ItemSelectReply) ]
+
+        mbListQuestionUuid =
+            Question.getListQuestionUuid question
+
+        mbItemQuestionUuid =
+            mbListQuestionUuid
+                |> Maybe.andThen (\uuid -> KnowledgeModel.getQuestion uuid model.questionnaire.knowledgeModel)
+                |> Maybe.map Question.getUuid
+
+        ( items, warning ) =
+            case mbItemQuestionUuid of
+                Just itemQuestionUuid ->
+                    let
+                        itemTemplateQuestions =
+                            KnowledgeModel.getQuestionItemTemplateQuestions itemQuestionUuid model.questionnaire.knowledgeModel
+
+                        itemsToOptions ( itemQuestionPath, reply ) =
+                            ReplyValue.getItemUuids reply.value
+                                |> List.indexedMap
+                                    (\i itemUuid ->
+                                        ( itemUuid
+                                        , ProjectQuestionnaire.getItemTitle model.questionnaire (String.split "." itemQuestionPath ++ [ itemUuid ]) itemTemplateQuestions
+                                            |> Maybe.withDefault (String.format (gettext "Item %s" appState.locale) [ String.fromInt (i + 1) ])
+                                        )
+                                    )
+
+                        itemOptions =
+                            model.questionnaire.replies
+                                |> Dict.filter (\key _ -> String.endsWith itemQuestionUuid key)
+                                |> Dict.toList
+                                |> List.concatMap itemsToOptions
+
+                        noItemsWarning =
+                            if List.isEmpty itemOptions then
+                                Flash.warningHtml
+                                    (div []
+                                        [ text (gettext "There are no items to select from yet." appState.locale)
+                                        , a
+                                            [ onClick (ScrollToQuestion itemQuestionUuid)
+                                            , class "ms-1"
+                                            ]
+                                            [ text (gettext "Create them now." appState.locale)
+                                            ]
+                                        ]
+                                    )
+
+                            else
+                                Html.nothing
+                    in
+                    ( itemOptions
+                    , noItemsWarning
+                    )
+
+                Nothing ->
+                    ( []
+                    , Flash.warning (gettext "This question does not have any configured list options to select from." appState.locale)
+                    )
+
+        itemToOption ( optionValue, optionLabel ) =
+            option [ value optionValue, selected (Just optionValue == mbSelectedItem) ]
+                [ text optionLabel ]
+
+        itemMissing =
+            ProjectQuestionnaire.itemSelectQuestionItemMissing model.questionnaire mbListQuestionUuid (pathToString path)
+
+        options =
+            List.map itemToOption items
+
+        optionsWithSelect =
+            if Maybe.isJust mbSelectedItem && not itemMissing then
+                options
+
+            else
+                itemToOption ( "", gettext "- select -" appState.locale ) :: options
+
+        itemLink =
+            case ProjectQuestionnaire.itemSelectQuestionItemPath model.questionnaire mbListQuestionUuid (pathToString path) of
+                Just itemPath ->
+                    div [ class "question-item-select-link" ]
+                        [ a [ onClick (ScrollToPath itemPath) ]
+                            [ text (gettext "Go to item" appState.locale)
+                            , fa "fas fa-arrow-right ms-1"
+                            ]
+                        ]
+
+                Nothing ->
+                    Html.nothing
+
+        clearReplyButton =
+            viewQuestionClearButton appState cfg path (Maybe.isJust mbSelectedItem)
+
+        missingItemWarning =
+            if itemMissing then
+                Flash.warning (gettext "The selected item was deleted." appState.locale)
+
+            else
+                Html.nothing
+    in
+    div [ class "question-item-select" ]
+        [ select (class "form-control" :: extraAttrs) optionsWithSelect
+        , itemLink
+        , clearReplyButton
+        , missingItemWarning
+        , warning
+        ]
+
+
+viewQuestionFile : AppState -> Config msg -> Model -> List String -> Question -> Html Msg
+viewQuestionFile appState cfg model path question =
+    let
+        mbAnswer =
+            Dict.get (pathToString path) model.questionnaire.replies
+                |> Maybe.map .value
+                |> Maybe.andThen ReplyValue.getFileUuid
+
+        fileView fileUuid =
+            case ProjectQuestionnaire.getFile model.questionnaire fileUuid of
+                Just file ->
+                    div [ class "questionnaire-file" ]
+                        [ fa ("me-2 " ++ FileIcon.getFileIcon file.fileName file.contentType)
+                        , a [ onClick (DownloadFile file.uuid), class "text-truncate" ] [ text file.fileName ]
+                        , span [ class "text-muted ms-2 text-nowrap" ]
+                            [ text ("(" ++ (ByteUnits.toReadable file.fileSize ++ ")")) ]
+                        , Html.viewIf (not cfg.features.readonly) <|
+                            div [ class "flex-grow-1 text-end" ]
+                                [ a
+                                    (onClick (DeleteFile fileUuid (pathToString path))
+                                        :: dataCy "file-delete"
+                                        :: class "btn-link text-danger ms-2 d-block"
+                                        :: tooltip (gettext "Delete" appState.locale)
+                                    )
+                                    [ faDelete ]
+                                ]
+                        ]
+
+                Nothing ->
+                    div []
+                        [ Flash.warning (gettext "The file was deleted." appState.locale)
+                        , viewQuestionClearButton appState cfg path True
+                        ]
+
+        questionContent =
+            case mbAnswer of
+                Just fileUuid ->
+                    fileView fileUuid
+
+                Nothing ->
+                    let
+                        fileConfig =
+                            { fileTypes = Question.getFileTypes question
+                            , maxSize = Question.getMaxSize question
+                            }
+                    in
+                    div []
+                        [ button
+                            [ class "btn btn-outline-primary"
+                            , onClick (FileUploadModalMsg (FileUploadModal.open (pathToString path) fileConfig))
+                            , disabled cfg.features.readonly
+                            , dataCy "file-upload"
+                            ]
+                            [ text (gettext "Upload file" appState.locale) ]
+                        ]
+    in
+    div [] [ questionContent ]
+
+
+viewChoice : AppState -> Config msg -> List String -> List String -> Int -> Choice -> Html Msg
+viewChoice appState cfg path selectedChoicesUuids order choice =
+    let
+        checkboxName =
+            pathToString (path ++ [ choice.uuid ])
+
+        humanIdentifier =
+            CharIdentifier.fromInt order ++ ". "
+
+        isSelected =
+            List.member choice.uuid selectedChoicesUuids
+
+        extraArgs =
+            if cfg.features.readonly then
+                [ disabled True ]
+
+            else
+                let
+                    newSelectedUuids =
+                        if isSelected then
+                            List.filter ((/=) choice.uuid) selectedChoicesUuids
+
+                        else
+                            choice.uuid :: selectedChoicesUuids
+                in
+                [ onClick (SetReply (pathToString path) (createReply appState (MultiChoiceReply newSelectedUuids))) ]
+    in
+    div
+        [ class "radio"
+        , classList [ ( "radio-selected", isSelected ), ( "radio-disabled", cfg.features.readonly ) ]
+        ]
+        [ label []
+            [ input ([ type_ "checkbox", name checkboxName, checked isSelected ] ++ extraArgs) []
+            , text humanIdentifier
+            , cfg.renderer.renderChoiceLabel choice
+            ]
+        ]
+
+
+viewAnswer : AppState -> Config msg -> Model -> KnowledgeModel -> List String -> Maybe String -> Int -> Answer -> Html Msg
+viewAnswer appState cfg model km path selectedAnswerUuid order answer =
+    let
+        radioName =
+            pathToString (path ++ [ answer.uuid ])
+
+        humanIdentifier =
+            CharIdentifier.fromInt order ++ ". "
+
+        extraArgs =
+            if cfg.features.readonly then
+                [ disabled True ]
+
+            else
+                [ onClick (SetReply (pathToString path) (createReply appState (AnswerReply answer.uuid))) ]
+
+        followUpsIndicator =
+            if List.isEmpty (KnowledgeModel.getAnswerFollowupQuestions answer.uuid km) then
+                Html.nothing
+
+            else
+                span (class "ms-3 text-muted" :: tooltipRight (gettext "This option leads to some follow up questions." appState.locale))
+                    [ faQuestionnaireFollowUpsIndication
+                    ]
+
+        isSelected =
+            selectedAnswerUuid == Just answer.uuid
+    in
+    div
+        [ class "radio"
+        , classList [ ( "radio-selected", isSelected ), ( "radio-disabled", cfg.features.readonly ) ]
+        ]
+        [ label []
+            [ input ([ type_ "radio", name radioName, checked isSelected ] ++ extraArgs) []
+            , text humanIdentifier
+            , cfg.renderer.renderAnswerLabel answer
+            , followUpsIndicator
+            , cfg.renderer.renderAnswerBadges model.viewSettings.metricValues answer
+            ]
+        ]
+
+
+viewCommentAction : AppState -> Config msg -> Model -> List String -> Html Msg
+viewCommentAction appState cfg model path =
+    if cfg.features.commentsEnabled && Feature.projectCommentAdd appState model.questionnaire then
+        let
+            pathString =
+                pathToString path
+
+            commentCount =
+                ProjectQuestionnaire.getUnresolvedCommentCount pathString model.questionnaire
+
+            isOpen =
+                case model.rightPanel of
+                    RightPanel.Comments rightPanelPath ->
+                        rightPanelPath == pathString
+
+                    _ ->
+                        False
+
+            msg =
+                if isOpen then
+                    SetRightPanel RightPanel.None
+
+                else
+                    SetRightPanel (RightPanel.Comments pathString)
+        in
+        if commentCount > 0 then
+            a
+                [ class "action action-comments"
+                , classList [ ( "action-comments-open", isOpen ) ]
+                , onClick msg
+                , dataCy "questionnaire_question-action_comment"
+                ]
+                [ faQuestionnaireComments
+                , text <| String.format (ngettext ( "1 comment", "%s comments" ) commentCount appState.locale) [ String.fromInt commentCount ]
+                ]
+
+        else
+            a
+                (class "action"
+                    :: classList [ ( "action-comments-open", isOpen ) ]
+                    :: onClick msg
+                    :: dataCy "questionnaire_question-action_comment"
+                    :: tooltip (gettext "Comments" appState.locale)
+                )
+                [ faQuestionnaireComments ]
+
+    else
+        Html.nothing
+
+
+viewTodoAction : AppState -> Config msg -> Model -> List String -> Html Msg
+viewTodoAction appState cfg model path =
+    if cfg.features.todosEnabled then
+        let
+            currentPath =
+                pathToString path
+
+            hasTodo =
+                model.questionnaire.labels
+                    |> Dict.get currentPath
+                    |> Maybe.unwrap False (List.member ProjectQuestionnaire.todoUuid)
+        in
+        if hasTodo then
+            a
+                [ class "action action-todo"
+                , onClick (SetLabels currentPath [])
+                ]
+                [ span [] [ text (gettext "TODO" appState.locale) ]
+                , a (class "text-danger" :: tooltip (gettext "Remove TODO" appState.locale))
+                    [ faRemove ]
+                ]
+
+        else
+            a
+                [ class "action action-add-todo"
+                , onClick <| SetLabels currentPath [ ProjectQuestionnaire.todoUuid ]
+                ]
+                [ faAdd
+                , span [] [ span [] [ text (gettext "Add TODO" appState.locale) ] ]
+                ]
+
+    else
+        Html.nothing
+
+
+viewFeedbackAction : AppState -> Config msg -> Model -> Question -> Html Msg
+viewFeedbackAction appState cfg model question =
+    let
+        feedbackEnabled =
+            appState.config.project.feedback.enabled && cfg.features.feedbackEnabled
+    in
+    if feedbackEnabled then
+        let
+            openFeedbackModal =
+                FeedbackModalMsg (FeedbackModal.OpenFeedback (KnowledgeModelUtils.getPackageId model.questionnaire.knowledgeModelPackage) (Question.getUuid question))
+        in
+        a
+            (class "action"
+                :: attribute "data-cy" "feedback"
+                :: onClick openFeedbackModal
+                :: tooltip (gettext "Feedback" appState.locale)
+            )
+            [ faQuestionnaireFeedback ]
+
+    else
+        Html.nothing
+
+
+viewPluginQuestionActions : AppState -> Config msg -> Model -> Question -> List String -> List (Html Msg)
+viewPluginQuestionActions appState cfg model question path =
+    case cfg.projectCommon of
+        Just projectCommon ->
+            let
+                plugins =
+                    AppState.getPluginsByConnector appState .projectQuestionActions
+                        |> Plugin.filterByKmPatterns (KnowledgeModelUtils.getPackageId model.questionnaire.knowledgeModelPackage)
+                        |> List.sortBy (.name << .action << Tuple.second)
+
+                viewPluginButton ( plugin, connector ) =
+                    let
+                        clickAction =
+                            case connector.type_ of
+                                ModalProjectQuestionAction ->
+                                    PluginProjectQuestionActionModalMsg
+                                        (PluginModal.open
+                                            { pluginUuid = plugin.uuid
+                                            , pluginElement = connector.element
+                                            , data = ( projectCommon, question, pathToString path )
+                                            }
+                                        )
+
+                                SidebarProjectQuestionAction ->
+                                    if isOpen then
+                                        SetRightPanel RightPanel.None
+
+                                    else
+                                        SetRightPanel <|
+                                            RightPanel.PluginQuestionAction
+                                                { plugin = plugin
+                                                , connector = connector
+                                                , question = question
+                                                , questionPath = pathToString path
+                                                }
+
+                        isOpen =
+                            case model.rightPanel of
+                                RightPanel.PluginQuestionAction details ->
+                                    (details.plugin.uuid == plugin.uuid)
+                                        && (details.connector.element == connector.element)
+                                        && (details.questionPath == pathToString path)
+
+                                _ ->
+                                    False
+                    in
+                    a
+                        (class "action"
+                            :: classList [ ( "action-comments-open", isOpen ) ]
+                            :: onClick clickAction
+                            :: tooltip (gettext connector.action.name appState.locale)
+                        )
+                        [ fa connector.action.icon ]
+            in
+            List.map viewPluginButton plugins
+
+        Nothing ->
+            []
+
+
+viewCopyLinkAction : AppState -> Config msg -> Model -> List String -> Html Msg
+viewCopyLinkAction appState cfg model path =
+    if cfg.features.questionLinksEnabled then
+        let
+            copyText =
+                if model.recentlyCopied then
+                    gettext "Copied!" appState.locale
+
+                else
+                    gettext "Copy link" appState.locale
+        in
+        a (class "action" :: onClick (CopyLinkToQuestion path) :: onMouseOut ClearRecentlyCopied :: tooltipLeft copyText)
+            [ faQuestionnaireCopyLink ]
+
+    else
+        Html.nothing
+
+
+viewRemoveItemModal : AppState -> Model -> Html Msg
+viewRemoveItemModal appState model =
+    let
+        viewLink ( path, label ) =
+            li []
+                [ a [ onClick (ScrollToPath path) ]
+                    [ text label ]
+                ]
+
+        wrapItemLinks links =
+            if List.isEmpty links then
+                Html.nothing
+
+            else
+                p [ class "mt-3" ]
+                    [ text (gettext "There are some item select questions using this item:" appState.locale)
+                    , ul [] links
+                    ]
+
+        items =
+            Maybe.map Tuple.second model.removeItem
+                |> Maybe.unwrap [] (ProjectQuestionnaire.getItemUsageInItemSelectQuestions model.questionnaire)
+                |> List.map viewLink
+                |> wrapItemLinks
+
+        modalContent =
+            [ text (gettext "Are you sure you want to remove this item?" appState.locale)
+            , items
+            ]
+
+        cfg =
+            Modal.confirmConfig (gettext "Remove item" appState.locale)
+                |> Modal.confirmConfigContent modalContent
+                |> Modal.confirmConfigVisible (Maybe.isJust model.removeItem)
+                |> Modal.confirmConfigAction (gettext "Remove" appState.locale) RemoveItemConfirm
+                |> Modal.confirmConfigCancelMsg RemoveItemCancel
+                |> Modal.confirmConfigDangerous True
+                |> Modal.confirmConfigDataCy "remove-item"
+    in
+    Modal.confirm appState cfg
+
+
+viewFileDeleteModal : AppState -> Model -> Html Msg
+viewFileDeleteModal appState model =
+    let
+        fileName =
+            case model.deleteFile of
+                Just ( fileUuid, _ ) ->
+                    case ProjectQuestionnaire.getFile model.questionnaire fileUuid of
+                        Just file ->
+                            file.fileName
+
+                        Nothing ->
+                            ""
+
+                Nothing ->
+                    ""
+
+        modalContent =
+            String.formatHtml (gettext "Are you sure you want to delete %s?" appState.locale)
+                [ strong [ class "text-break" ] [ text fileName ] ]
+
+        cfg =
+            Modal.confirmConfig (gettext "Delete file" appState.locale)
+                |> Modal.confirmConfigContent modalContent
+                |> Modal.confirmConfigVisible (Maybe.isJust model.deleteFile)
+                |> Modal.confirmConfigAction (gettext "Delete" appState.locale) DeleteFileConfirm
+                |> Modal.confirmConfigCancelMsg DeleteFileCancel
+                |> Modal.confirmConfigDangerous True
+                |> Modal.confirmConfigDataCy "delete-file"
+    in
+    Modal.confirm appState cfg
+
+
+viewPluginProjectActionModal : AppState -> Model -> Html Msg
+viewPluginProjectActionModal appState model =
+    let
+        pluginModalViewConfig =
+            { attributes =
+                \project ->
+                    [ PluginElement.projectValue project
+                    ]
+            , wrapMsg = PluginProjectActionModalMsg
+            }
+    in
+    PluginModal.view appState pluginModalViewConfig model.pluginProjectActionModal
+
+
+viewPluginProjectQuestionActionModal : AppState -> Model -> Html Msg
+viewPluginProjectQuestionActionModal appState model =
+    let
+        pluginModalViewConfig =
+            { attributes =
+                \( project, question, questionPath ) ->
+                    [ PluginElement.projectValue project
+                    , PluginElement.questionValue question
+                    , PluginElement.questionPathValue questionPath
+                    ]
+            , wrapMsg = PluginProjectQuestionActionModalMsg
+            }
+    in
+    PluginModal.view appState pluginModalViewConfig model.pluginProjectQuestionActionModal
+
+
+
+-- UTILS
+
+
+pathToString : List String -> String
+pathToString =
+    String.join "."
+
+
+createReply : AppState -> ReplyValue -> Reply
+createReply appState value =
+    { value = value
+    , createdAt = appState.currentTime
+    , createdBy = Maybe.map UserConfig.toUserSuggestion appState.config.user
+    }

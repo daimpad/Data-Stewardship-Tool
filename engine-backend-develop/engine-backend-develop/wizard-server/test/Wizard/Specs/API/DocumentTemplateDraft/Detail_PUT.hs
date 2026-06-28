@@ -1,0 +1,122 @@
+module Wizard.Specs.API.DocumentTemplateDraft.Detail_PUT (
+  detail_PUT,
+) where
+
+import Data.Aeson (encode)
+import qualified Data.ByteString.Char8 as BS
+import Data.Foldable (traverse_)
+import qualified Data.UUID as U
+import Network.HTTP.Types
+import Network.Wai (Application)
+import Test.Hspec
+import Test.Hspec.Wai hiding (shouldRespondWith)
+
+import Shared.DocumentTemplate.Database.Migration.Development.DocumentTemplate.Data.DocumentTemplates
+import Shared.DocumentTemplate.Model.DocumentTemplate.DocumentTemplate
+import Shared.KnowledgeModel.Database.DAO.Package.KnowledgeModelPackageDAO
+import Shared.KnowledgeModel.Database.DAO.Package.KnowledgeModelPackageEventDAO
+import Shared.KnowledgeModel.Database.Migration.Development.KnowledgeModel.Data.Package.KnowledgeModelPackages
+import Wizard.Api.Resource.DocumentTemplate.DocumentTemplateChangeJM ()
+import Wizard.Api.Resource.DocumentTemplate.Draft.DocumentTemplateDraftChangeDTO
+import Wizard.Api.Resource.DocumentTemplate.Draft.DocumentTemplateDraftDetailJM ()
+import Wizard.Database.DAO.DocumentTemplate.DocumentTemplateDraftDataDAO
+import Wizard.Database.DAO.Project.ProjectDAO
+import Wizard.Database.Migration.Development.DocumentTemplate.Data.DocumentTemplateDrafts
+import qualified Wizard.Database.Migration.Development.DocumentTemplate.DocumentTemplateMigration as DT_Migration
+import Wizard.Database.Migration.Development.Project.Data.Projects
+import Wizard.Model.Context.AppContext
+import Wizard.Model.DocumentTemplate.DocumentTemplateDraftDetail
+
+import SharedTest.Specs.API.Common
+import Wizard.Specs.API.Common
+import Wizard.Specs.API.DocumentTemplate.Common
+import Wizard.Specs.Common
+
+-- ------------------------------------------------------------------------
+-- PUT /wizard-api/document-template-drafts/{uuid}
+-- ------------------------------------------------------------------------
+detail_PUT :: AppContext -> SpecWith ((), Application)
+detail_PUT appContext =
+  describe "PUT /wizard-api/document-template-drafts/{uuid}" $ do
+    test_200 appContext
+    test_401 appContext
+    test_403 appContext
+    test_404 appContext
+
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+reqMethod = methodPut
+
+reqUrl = BS.pack $ "/wizard-api/document-template-drafts/" ++ U.toString wizardDocumentTemplateDraft.uuid
+
+reqHeaders = [reqCtHeader, reqAuthHeader]
+
+reqDto = wizardDocumentTemplateDraftChangeDTO
+
+reqBodyT = encode
+
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+test_200 appContext = do
+  create_test_200
+    "HTTP 200 OK (change name)"
+    appContext
+    (wizardDocumentTemplateDraftChangeDTO {name = "Some edited name"} :: DocumentTemplateDraftChangeDTO)
+    (wizardDocumentTemplateDraft {name = "Some edited name"} :: DocumentTemplate)
+  create_test_200
+    "HTTP 200 OK (publish)"
+    appContext
+    (wizardDocumentTemplateDraftChangeDTO {phase = ReleasedDocumentTemplatePhase} :: DocumentTemplateDraftChangeDTO)
+    (wizardDocumentTemplateDraft {phase = ReleasedDocumentTemplatePhase} :: DocumentTemplate)
+  create_test_200
+    "HTTP 200 OK (publish)"
+    appContext
+    (wizardDocumentTemplateDraftChangeDTO {version = "3.0.0"} :: DocumentTemplateDraftChangeDTO)
+    (wizardDocumentTemplateDraft {version = "3.0.0"} :: DocumentTemplate)
+
+create_test_200 title appContext reqDto expDto =
+  it title $
+    do
+      -- GIVEN: Prepare expectation
+      let expStatus = 200
+      let expHeaders = resCtHeaderPlain : resCorsHeadersPlain
+      -- AND: Run migrations
+      runInContextIO DT_Migration.runMigration appContext
+      runInContextIO (insertPackage germanyKmPackage) appContext
+      runInContextIO (traverse_ insertPackageEvent germanyKmPackageEvents) appContext
+      runInContextIO (insertProject project1) appContext
+      runInContextIO (insertDraftData wizardDocumentTemplateDraftData) appContext
+      -- WHEN: Call API
+      response <- request reqMethod reqUrl reqHeaders (reqBodyT reqDto)
+      -- THEN: Compare response with expectation
+      result <- destructResponse' response
+      let (status, headers, resDto) = result :: (Int, ResponseHeaders, DocumentTemplateDraftDetail)
+      assertResStatus status expStatus
+      assertResHeaders headers expHeaders
+      compareTemplateDtos resDto expDto
+      -- AND: Find result in DB and compare with expectation state
+      assertExistenceOfDocumentTemplateInDB appContext wizardDocumentTemplateDeprecated
+
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+test_401 appContext = createAuthTest reqMethod reqUrl [reqCtHeader] (reqBodyT reqDto)
+
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+test_403 appContext = createNoPermissionTest appContext reqMethod reqUrl [reqCtHeader] (reqBodyT reqDto) "DocumentTemplateEditorsUseRolePermission"
+
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+-- ----------------------------------------------------
+test_404 appContext =
+  createNotFoundTest'
+    reqMethod
+    "/wizard-api/document-template-drafts/3db4265e-8ba2-433d-97fb-6cc504866bbd"
+    reqHeaders
+    (reqBodyT reqDto)
+    "document_template"
+    [("uuid", "3db4265e-8ba2-433d-97fb-6cc504866bbd"), ("phase", "DraftDocumentTemplatePhase")]

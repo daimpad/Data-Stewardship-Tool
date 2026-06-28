@@ -1,0 +1,84 @@
+module Shared.Coordinate.Util.Coordinate where
+
+import Control.Monad.Except (throwError)
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.List as L
+import qualified Data.Text as T
+import GHC.Records
+
+import Shared.Common.Model.Context.AppContext
+import Shared.Common.Model.Error.Error
+import Shared.Common.Util.String (splitOn)
+import Shared.Coordinate.Localization.Messages.Public
+import Shared.Coordinate.Model.Coordinate.Coordinate
+
+compareVersionNeg :: String -> String -> Ordering
+compareVersionNeg verA verB = compareVersion verB verA
+
+compareVersion :: String -> String -> Ordering
+compareVersion versionA versionB =
+  case compare versionAMajor versionBMajor of
+    LT -> LT
+    GT -> GT
+    EQ ->
+      case compare versionAMinor versionBMinor of
+        LT -> LT
+        GT -> GT
+        EQ ->
+          case compare versionAPatch versionBPatch of
+            LT -> LT
+            GT -> GT
+            EQ -> EQ
+  where
+    versionASplit = splitVersion versionA
+    versionBSplit = splitVersion versionB
+    versionAMajor = read (head versionASplit) :: Int
+    versionAMinor = read (versionASplit !! 1) :: Int
+    versionAPatch = read (versionASplit !! 2) :: Int
+    versionBMajor = read (head versionBSplit) :: Int
+    versionBMinor = read (versionBSplit !! 1) :: Int
+    versionBPatch = read (versionBSplit !! 2) :: Int
+
+parseCoordinate :: AppContextC s sc m => String -> m Coordinate
+parseCoordinate coordinateS =
+  case splitOn ":" coordinateS of
+    [organizationId, entityId, version] -> return Coordinate {..}
+    _ -> throwError . UserError $ _ERROR_VALIDATION__INVALID_COORDINATE_FORMAT
+
+parseCoordinateT :: T.Text -> Either String Coordinate
+parseCoordinateT bs =
+  let parts = splitOn ":" (T.unpack bs)
+   in case parts of
+        [organizationId, entityId, version] -> Right (Coordinate {..})
+        _ -> Left $ "Unable to parse Coordinate '" ++ T.unpack bs ++ "'"
+
+parseCoordinateBS :: BS.ByteString -> Either String Coordinate
+parseCoordinateBS bs =
+  let parts = splitOn ":" (BS.unpack bs)
+   in case parts of
+        [organizationId, entityId, version] -> Right (Coordinate {..})
+        _ -> Left $ "Unable to parse Coordinate '" ++ BS.unpack bs ++ "'"
+
+splitCoordinate :: String -> [String]
+splitCoordinate = splitOn ":"
+
+getOrgIdFromCoordinate :: String -> String
+getOrgIdFromCoordinate coordinate = head $ splitCoordinate coordinate
+
+getKmIdFromCoordinate :: String -> String
+getKmIdFromCoordinate coordinate = splitCoordinate coordinate !! 1
+
+getTemplateIdFromCoordinate :: String -> String
+getTemplateIdFromCoordinate coordinate = splitCoordinate coordinate !! 1
+
+getVersionFromCoordinate :: String -> String
+getVersionFromCoordinate coordinate = splitCoordinate coordinate !! 2
+
+splitVersion :: String -> [String]
+splitVersion = splitOn "."
+
+buildCoordinate :: String -> String -> String -> String
+buildCoordinate orgId entityId version = orgId ++ ":" ++ entityId ++ ":" ++ version
+
+chooseTheNewest :: (HasField "version" a String, Ord a) => [[a]] -> [a]
+chooseTheNewest = fmap (L.maximumBy (\t1 t2 -> compareVersion t1.version t2.version))

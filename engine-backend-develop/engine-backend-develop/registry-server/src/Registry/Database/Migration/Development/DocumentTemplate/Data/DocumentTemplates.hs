@@ -1,0 +1,13 @@
+module Registry.Database.Migration.Development.DocumentTemplate.Data.DocumentTemplates where
+
+import Registry.Api.Resource.DocumentTemplate.DocumentTemplateDetailDTO
+import Registry.Service.DocumentTemplate.DocumentTemplateMapper
+import RegistryLib.Api.Resource.DocumentTemplate.DocumentTemplateSimpleDTO
+import RegistryLib.Database.Migration.Development.Organization.Data.Organizations
+import Shared.DocumentTemplate.Database.Migration.Development.DocumentTemplate.Data.DocumentTemplates
+
+wizardDocumentTemplateSimpleDTO :: DocumentTemplateSimpleDTO
+wizardDocumentTemplateSimpleDTO = toSimpleDTO [orgGlobal] wizardDocumentTemplate
+
+wizardDocumentTemplateDetailDTO :: DocumentTemplateDetailDTO
+wizardDocumentTemplateDetailDTO = toDetailDTO wizardDocumentTemplate ["1.0.0"] orgGlobal

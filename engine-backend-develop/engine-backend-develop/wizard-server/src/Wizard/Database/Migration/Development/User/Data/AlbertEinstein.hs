@@ -1,0 +1,207 @@
+module Wizard.Database.Migration.Development.User.Data.AlbertEinstein where
+
+import qualified Data.Map.Strict as M
+import Data.Maybe (fromJust)
+import Data.Time
+
+import Shared.Common.Model.Common.SensitiveData
+import Shared.Common.Util.Date
+import Shared.Common.Util.Uuid
+import Shared.Locale.Database.Migration.Development.Locale.Data.Locales
+import Shared.Locale.Model.Locale.Locale
+import Wizard.Api.Resource.User.UserDTO
+import Wizard.Api.Resource.User.UserPasswordDTO
+import Wizard.Api.Resource.User.UserProfileChangeDTO
+import Wizard.Api.Resource.User.UserStateDTO
+import Wizard.Database.Migration.Development.Plugin.Data.PluginSettings
+import Wizard.Database.Migration.Development.Plugin.Data.Plugins
+import Wizard.Database.Migration.Development.Tenant.Data.TenantConfigs
+import Wizard.Database.Migration.Development.Tenant.Data.Tenants
+import Wizard.Database.Migration.Development.User.Data.Roles
+import Wizard.Model.Plugin.Plugin
+import Wizard.Model.Tenant.Config.TenantConfig
+import Wizard.Model.Tenant.Tenant
+import Wizard.Model.User.OnlineUserInfo
+import Wizard.Model.User.User
+import Wizard.Model.User.UserPluginSettings
+import Wizard.Model.User.UserProfile
+import Wizard.Model.User.UserSubmissionProp
+import Wizard.Model.User.UserSubmissionPropEM ()
+import Wizard.Model.User.UserSubmissionPropList
+import Wizard.Service.User.UserMapper
+import WizardLib.Public.Database.Migration.Development.User.Data.UserGroups
+import WizardLib.Public.Model.User.RolePermission
+import WizardLib.Public.Model.User.UserGroup
+import WizardLib.Public.Model.User.UserGroupMembership
+import WizardLib.Public.Model.User.UserSuggestion
+import WizardLib.Public.Model.User.UserTour
+import WizardLib.Public.Service.User.RoleMapper (toRoleSimple)
+
+userAlbert :: User
+userAlbert =
+  User
+    { uuid = u' "ec6f8e90-2a91-49ec-aa3f-9eab2267fc66"
+    , firstName = "Albert"
+    , lastName = "Einstein"
+    , email = "albert.einstein@example.com"
+    , affiliation = Just "My University"
+    , role = (toRoleSimple adminRole) {permissions = allRolePermissions ++ [_DEV_USE_ROLE_PERMISSION, _TENANTS_MANAGE_ROLE_PERMISSION]}
+    , active = True
+    , -- cspell:disable
+      passwordHash = "pbkdf1:sha256|17|awVwfF3h27PrxINtavVgFQ==|iUFbQnZFv+rBXBu1R2OkX+vEjPtohYk5lsyIeOBdEy4="
+    , -- cspell:enable
+      imageUrl = Nothing
+    , locale = Nothing
+    , machine = False
+    , lastSeenNewsId = Nothing
+    , tenantUuid = defaultTenant.uuid
+    , lastVisitedAt = UTCTime (fromJust $ fromGregorianValid 2018 1 20) 0
+    , createdAt = UTCTime (fromJust $ fromGregorianValid 2018 1 20) 0
+    , updatedAt = UTCTime (fromJust $ fromGregorianValid 2018 1 25) 0
+    , emailVerifiedAt = Just $ UTCTime (fromJust $ fromGregorianValid 2018 1 20) 0
+    , emailPending = Nothing
+    }
+
+userAlbertEdited :: User
+userAlbertEdited =
+  userAlbert
+    { firstName = "EDITED: Isaac"
+    , lastName = "EDITED: Einstein"
+    , email = "albert.einstein@example-edited.com"
+    , affiliation = Just "EDITED: My University"
+    }
+
+userAlbertEditedAfterPut :: User
+userAlbertEditedAfterPut =
+  userAlbertEdited
+    { email = userAlbert.email
+    , emailVerifiedAt = Nothing
+    , emailPending = Just userAlbertEdited.email
+    }
+
+userAlbertWithNewsId :: User
+userAlbertWithNewsId =
+  userAlbert
+    { lastSeenNewsId = Just "my-news-id"
+    }
+
+userAlbertDto :: UserDTO
+userAlbertDto = toDTO userAlbert
+
+userAlbertProfile :: UserProfile
+userAlbertProfile = toUserProfile (toDTO userAlbert) [bioGroup.uuid] plugin1Dict
+
+userAlbertEditedChange :: UserProfileChangeDTO
+userAlbertEditedChange =
+  UserProfileChangeDTO
+    { firstName = userAlbertEdited.firstName
+    , lastName = userAlbertEdited.lastName
+    , email = userAlbertEdited.email
+    , affiliation = userAlbertEdited.affiliation
+    }
+
+userPassword :: UserPasswordDTO
+userPassword = UserPasswordDTO {password = "newPassword"}
+
+userState :: UserStateDTO
+userState = UserStateDTO {active = True}
+
+userAlbertOnlineInfo :: OnlineUserInfo
+userAlbertOnlineInfo = toLoggedOnlineUserInfo (toDTO userAlbert) 10 [bioGroup.uuid]
+
+userAlbertSuggestion :: UserSuggestion
+userAlbertSuggestion = toSuggestion . toSimple $ userAlbert
+
+userAlbertBioGroupMembership :: UserGroupMembership
+userAlbertBioGroupMembership =
+  UserGroupMembership
+    { userGroupUuid = bioGroup.uuid
+    , userUuid = userAlbert.uuid
+    , mType = OwnerUserGroupMembershipType
+    , tenantUuid = defaultTenant.uuid
+    , createdAt = dt' 2018 1 21
+    , updatedAt = dt' 2018 1 21
+    }
+
+userAlbertTour1 :: UserTour
+userAlbertTour1 =
+  UserTour
+    { userUuid = userAlbert.uuid
+    , tourId = "TOUR_1"
+    , tenantUuid = defaultTenant.uuid
+    , createdAt = dt' 2018 1 21
+    }
+
+userAlbertTour2 :: UserTour
+userAlbertTour2 =
+  UserTour
+    { userUuid = userAlbert.uuid
+    , tourId = "TOUR_2"
+    , tenantUuid = defaultTenant.uuid
+    , createdAt = dt' 2018 1 21
+    }
+
+userAlbertPluginSettings :: UserPluginSettings
+userAlbertPluginSettings =
+  UserPluginSettings
+    { userUuid = userAlbert.uuid
+    , pluginUuid = plugin1.uuid
+    , values = plugin1Values1
+    , tenantUuid = defaultTenant.uuid
+    , createdAt = dt' 2018 1 21
+    , updatedAt = dt' 2018 1 21
+    }
+
+userAlbertPluginSettingsEdited :: UserPluginSettings
+userAlbertPluginSettingsEdited =
+  userAlbertPluginSettings
+    { values = plugin1Values1Edited
+    }
+
+-- --------------------------------------
+-- SUBMISSION
+-- --------------------------------------
+userAlbertSubmissionProps :: [UserSubmissionProp]
+userAlbertSubmissionProps = [process defaultSecret userAlbertApiToken]
+
+userAlbertApiToken :: UserSubmissionProp
+userAlbertApiToken =
+  UserSubmissionProp
+    { userUuid = userAlbert.uuid
+    , serviceId = defaultSubmissionService.sId
+    , values = M.fromList [(defaultSubmissionServiceSecretProp, ""), (defaultSubmissionServiceApiTokenProp, "Some Token")]
+    , tenantUuid = defaultTenant.uuid
+    , createdAt = dt' 2018 1 21
+    , updatedAt = dt' 2018 1 21
+    }
+
+userAlbertApiTokenList :: UserSubmissionPropList
+userAlbertApiTokenList =
+  UserSubmissionPropList
+    { sId = defaultSubmissionService.sId
+    , name = defaultSubmissionService.name
+    , values = M.fromList [(defaultSubmissionServiceSecretProp, ""), (defaultSubmissionServiceApiTokenProp, "Some Token")]
+    }
+
+userAlbertSubmissionPropsEdited :: [UserSubmissionProp]
+userAlbertSubmissionPropsEdited = [process defaultSecret userAlbertApiTokenEdited]
+
+userAlbertApiTokenEdited :: UserSubmissionProp
+userAlbertApiTokenEdited =
+  userAlbertApiToken
+    { values = M.fromList [(defaultSubmissionServiceSecretProp, ""), (defaultSubmissionServiceApiTokenProp, "EDITED: Some Token")]
+    }
+
+userAlbertApiTokenEditedDto :: UserSubmissionPropList
+userAlbertApiTokenEditedDto =
+  UserSubmissionPropList
+    { sId = defaultSubmissionService.sId
+    , name = defaultSubmissionService.name
+    , values = M.fromList [(defaultSubmissionServiceSecretProp, ""), (defaultSubmissionServiceApiTokenProp, "EDITED: Some Token")]
+    }
+
+userAlbertEditedLocale :: User
+userAlbertEditedLocale =
+  userAlbert
+    { locale = Just localeNl.uuid
+    }

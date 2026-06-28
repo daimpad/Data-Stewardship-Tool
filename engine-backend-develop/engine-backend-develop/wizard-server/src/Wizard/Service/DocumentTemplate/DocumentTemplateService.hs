@@ -1,0 +1,139 @@
+module Wizard.Service.DocumentTemplate.DocumentTemplateService where
+
+import Control.Monad.Except (throwError)
+import Control.Monad.Reader (asks)
+import Data.Foldable (traverse_)
+import qualified Data.List as L
+import qualified Data.UUID as U
+
+import Shared.Common.Model.Common.Page
+import Shared.Common.Model.Common.PageMetadata
+import Shared.Common.Model.Common.Pageable
+import Shared.Common.Model.Common.Sort
+import Shared.Common.Model.Error.Error
+import Shared.Coordinate.Model.Coordinate.Coordinate
+import Shared.DocumentTemplate.Api.Resource.DocumentTemplate.DocumentTemplateSuggestionDTO
+import Shared.DocumentTemplate.Constant.DocumentTemplate
+import Shared.DocumentTemplate.Database.DAO.DocumentTemplate.DocumentTemplateAssetDAO
+import Shared.DocumentTemplate.Database.DAO.DocumentTemplate.DocumentTemplateDAO hiding (findDocumentTemplatesFiltered)
+import Shared.DocumentTemplate.Database.DAO.DocumentTemplate.DocumentTemplateFormatDAO
+import Shared.DocumentTemplate.Model.DocumentTemplate.DocumentTemplate
+import qualified Shared.DocumentTemplate.Service.DocumentTemplate.DocumentTemplateMapper as STM
+import Shared.KnowledgeModel.Database.DAO.Package.KnowledgeModelPackageDAO
+import Wizard.Api.Resource.DocumentTemplate.DocumentTemplateChangeDTO
+import Wizard.Api.Resource.DocumentTemplate.DocumentTemplateDetailDTO
+import Wizard.Api.Resource.DocumentTemplate.DocumentTemplateSimpleDTO
+import Wizard.Database.DAO.Common
+import Wizard.Database.DAO.Document.DocumentDAO
+import Wizard.Database.DAO.DocumentTemplate.DocumentTemplateDAO
+import Wizard.Database.DAO.Registry.RegistryOrganizationDAO
+import Wizard.Database.DAO.Registry.RegistryTemplateDAO
+import Wizard.Localization.Messages.Public
+import Wizard.Model.Config.ServerConfig
+import Wizard.Model.Context.AclContext
+import Wizard.Model.Context.AppContext
+import Wizard.Model.DocumentTemplate.DocumentTemplateSuggestion
+import Wizard.Model.Tenant.Config.TenantConfig
+import Wizard.S3.DocumentTemplate.DocumentTemplateS3
+import Wizard.Service.Document.DocumentCleanService
+import Wizard.Service.DocumentTemplate.DocumentTemplateMapper
+import Wizard.Service.DocumentTemplate.DocumentTemplateUtil
+import Wizard.Service.DocumentTemplate.DocumentTemplateValidation
+import Wizard.Service.Tenant.Config.ConfigService
+
+getDocumentTemplatesPage :: Maybe String -> Maybe String -> Maybe String -> Maybe Bool -> Pageable -> [Sort] -> AppContextM (Page DocumentTemplateSimpleDTO)
+getDocumentTemplatesPage mOrganizationId mTemplateId mQuery mOutdated pageable sort = do
+  tcRegistry <- getCurrentTenantConfigRegistry
+  if mOutdated == Just True && not tcRegistry.enabled
+    then return $ Page "documentTemplates" (PageMetadata 0 0 0 0) []
+    else do
+      templates <- findDocumentTemplatesPage mOrganizationId mTemplateId mQuery mOutdated Nothing pageable sort
+      return . fmap (toSimpleDTO' tcRegistry.enabled) $ templates
+
+getDocumentTemplateSuggestions :: Maybe U.UUID -> Bool -> Maybe DocumentTemplatePhase -> Maybe String -> Maybe Bool -> Pageable -> [Sort] -> AppContextM (Page DocumentTemplateSuggestionDTO)
+getDocumentTemplateSuggestions mPkgUuid includeUnsupportedMetamodelVersion mPhase mQuery mNonEditable pageable sort = do
+  mPkgId <-
+    case mPkgUuid of
+      Just pkgUuid -> do
+        pkg <- findPackageByUuid pkgUuid
+        return $ Just $ createCoordinate pkg
+      Nothing -> return Nothing
+  tmls <- findDocumentTemplatesSuggestions mQuery mNonEditable
+  let entities = filterDocumentTemplatesInGroup mPkgId tmls
+  return $ toSuggestionDTOPage entities pageable
+  where
+    filterDocumentTemplatesInGroup :: Maybe Coordinate -> [DocumentTemplateSuggestion] -> [DocumentTemplateSuggestion]
+    filterDocumentTemplatesInGroup mPkgId =
+      filter (\dt -> includeUnsupportedMetamodelVersion || isDocumentTemplateSupported dt.metamodelVersion)
+        . filter (isDocumentTemplateInPhase mPhase)
+        . filterDocumentTemplates mPkgId
+
+getDocumentTemplatesDto :: [(String, String)] -> AppContextM [DocumentTemplateSuggestionDTO]
+getDocumentTemplatesDto queryParams = do
+  dts <- findDocumentTemplatesFiltered queryParams
+  traverse
+    ( \dt -> do
+        formats <- findDocumentTemplateFormats dt.uuid
+        return $ STM.toSuggestionDTO dt formats
+    )
+    dts
+
+getDocumentTemplateByUuidAndPackageId :: U.UUID -> U.UUID -> AppContextM DocumentTemplate
+getDocumentTemplateByUuidAndPackageId documentTemplateUuid pkgUuid = do
+  templates <- findDocumentTemplatesFiltered []
+  pkg <- findPackageByUuid pkgUuid
+  let dts = filterDocumentTemplates (Just . createCoordinate $ pkg) templates
+  case L.find (\dt -> dt.uuid == documentTemplateUuid) dts of
+    Just dt -> return dt
+    Nothing -> throwError . NotExistsError $ _ERROR_VALIDATION__TEMPLATE_ABSENCE
+
+getDocumentTemplateByUuidDto :: U.UUID -> AppContextM DocumentTemplateDetailDTO
+getDocumentTemplateByUuidDto uuid = do
+  tml <- findDocumentTemplateByUuid uuid
+  formats <- findDocumentTemplateFormats uuid
+  versions <- getDocumentTemplateVersions tml
+  tmlRs <- findRegistryTemplates
+  orgRs <- findRegistryOrganizations
+  serverConfig <- asks serverConfig
+  let registryLink = buildRegistryTemplateUrl serverConfig.registry.clientUrl tml tmlRs
+  usableKnowledgeModels <- findUsablePackagesForDocumentTemplate tml.uuid
+  tcRegistry <- getCurrentTenantConfigRegistry
+  return $ toDetailDTO tml formats tcRegistry.enabled tmlRs orgRs versions registryLink usableKnowledgeModels
+
+modifyDocumentTemplate :: U.UUID -> DocumentTemplateChangeDTO -> AppContextM DocumentTemplateDetailDTO
+modifyDocumentTemplate uuid reqDto =
+  runInTransaction $ do
+    checkPermission _DOCUMENT_TEMPLATES_MANAGE_ROLE_PERMISSION
+    validateChangeDto uuid reqDto
+    tml <- findDocumentTemplateByUuid uuid
+    let templateUpdated = fromChangeDTO reqDto tml
+    updateDocumentTemplateById templateUpdated
+    deleteTemporalDocumentsByDocumentTemplateUuid uuid
+    getDocumentTemplateByUuidDto uuid
+
+deleteDocumentTemplatesByQueryParams :: [(String, String)] -> AppContextM ()
+deleteDocumentTemplatesByQueryParams queryParams =
+  runInTransaction $ do
+    checkPermission _DOCUMENT_TEMPLATES_MANAGE_ROLE_PERMISSION
+    dts <- findDocumentTemplatesFiltered queryParams
+    traverse_ (\dt -> deleteDocumentTemplate dt.uuid) dts
+
+deleteDocumentTemplate :: U.UUID -> AppContextM ()
+deleteDocumentTemplate uuid =
+  runInTransaction $ do
+    checkPermission _DOCUMENT_TEMPLATES_MANAGE_ROLE_PERMISSION
+    tml <- findDocumentTemplateByUuid uuid
+    assets <- findAssetsByDocumentTemplateUuid uuid
+    validateDocumentTemplateDeletion uuid
+    cleanTemporallyDocumentsForTemplate uuid
+    deleteDocumentTemplateByUuid uuid
+    let assetUuids = fmap (.uuid) assets
+    traverse_ (removeAsset uuid) assetUuids
+
+-- --------------------------------
+-- PRIVATE
+-- --------------------------------
+getDocumentTemplateVersions :: DocumentTemplate -> AppContextM [(U.UUID, String)]
+getDocumentTemplateVersions tml = do
+  allTmls <- findDocumentTemplatesByOrganizationIdAndKmId tml.organizationId tml.templateId
+  return . fmap (\t -> (t.uuid, t.version)) . filter (\t -> t.phase == ReleasedDocumentTemplatePhase || t.phase == DeprecatedDocumentTemplatePhase) $ allTmls

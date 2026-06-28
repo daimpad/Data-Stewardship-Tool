@@ -1,0 +1,27 @@
+module Wizard.Database.Mapping.Document.DocumentList where
+
+import Database.PostgreSQL.Simple
+import Database.PostgreSQL.Simple.FromRow
+
+import Shared.DocumentTemplate.Api.Resource.DocumentTemplate.DocumentTemplateJM ()
+import Shared.DocumentTemplate.Database.Mapping.DocumentTemplate.DocumentTemplateFormatSimple
+import Wizard.Database.Mapping.Document.Document ()
+import Wizard.Database.Mapping.DocumentTemplate.DocumentTemplateWithCoordinate
+import Wizard.Model.Document.DocumentList
+
+instance FromRow DocumentList where
+  fromRow = do
+    uuid <- field
+    name <- field
+    state <- field
+    projectUuid <- field
+    projectName <- field
+    projectEventUuid <- field
+    projectVersion <- field
+    documentTemplate <- fieldDocumentTemplateWithCoordinate
+    documentTemplateFormat <- fieldDocumentTemplateFormatSimple
+    fileSize <- field
+    workerLog <- field
+    createdBy <- field
+    createdAt <- field
+    return $ DocumentList {..}

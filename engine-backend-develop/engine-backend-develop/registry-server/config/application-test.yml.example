@@ -1,0 +1,16 @@
+general:
+  environment: Test
+  serverPort: 3000
+  clientUrl: http://localhost:3001
+
+database:
+  connectionString: postgresql://postgres:postgres@localhost:5432/postgres
+  useDevMigration: true
+
+s3:
+  url: http://localhost:9000
+  bucket: registry-server
+
+analyticalMails:
+  enabled: false
+  email:

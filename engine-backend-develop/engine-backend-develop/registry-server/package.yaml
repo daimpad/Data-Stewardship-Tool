@@ -1,0 +1,161 @@
+name: registry-server
+version: '4.31.2'
+synopsis: Engine Registry
+description: Engine Registry
+category: Web
+author: Vojtech Knaisl <vknaisl@gmail.com>
+maintainer: Vojtech Knaisl <vknaisl@gmail.com>
+copyright: 2023 Vojtech Knaisl <vknaisl@gmail.com>
+license: Apache
+license-file: LICENSE.md
+homepage: https://github.com/ds-wizard/engine-backend
+git: git@github.com:engine/ds-wizard/engine-backend.git
+bug-reports: https://github.com/ds-wizard/ds-wizard/issues
+tested-with: GHC==9.4.4
+library:
+  source-dirs: src
+  when:
+  - condition: os(darwin)
+    then:
+      ghc-options: -O0 -fwarn-unused-imports -fno-warn-warnings-deprecations -fno-warn-ambiguous-fields -Wno-x-partial -Werror=missing-fields -Werror=incomplete-patterns
+    else:
+      ghc-options: -threaded -O2 -fwarn-unused-imports -fno-warn-warnings-deprecations -fno-warn-ambiguous-fields -Wno-x-partial -Werror=missing-fields -Werror=incomplete-patterns
+  dependencies:
+  - shared-common
+  - registry-public
+  - base
+  - aeson
+  - async
+  - bytestring
+  - case-insensitive
+  - conduit
+  - containers
+  - cron
+  - data-default
+  - exceptions
+  - hashable
+  - http-client
+  - http-types
+  - memory
+  - minio-hs
+  - mtl
+  - monad-control
+  - monad-logger
+  - network
+  - postgresql-simple
+  - postgresql-libpq
+  - postgresql-migration
+  - pretty-simple
+  - pretty-terminal
+  - pwstore-fast
+  - random
+  - raven-haskell
+  - regex-compat
+  - resource-pool
+  - servant
+  - servant-multipart
+  - servant-server
+  - servant-swagger
+  - servant-swagger-ui
+  - swagger2
+  - text
+  - text-replace
+  - time
+  - transformers
+  - unix
+  - unordered-containers
+  - uri-encode
+  - uuid
+  - vector
+  - wai
+  - wai-extra
+  - warp
+  - wreq
+  - yaml
+  - zip-archive
+
+executables:
+  registry-server:
+    main: Main.hs
+    source-dirs: app
+    when:
+    - condition: os(darwin)
+      then:
+        ghc-options: -threaded -O0 -fwarn-unused-imports -fno-warn-warnings-deprecations -fno-warn-ambiguous-fields -Wno-x-partial -Werror=missing-fields -Werror=incomplete-patterns
+      else:
+        ghc-options: -threaded -O2 -fwarn-unused-imports -fno-warn-warnings-deprecations -fno-warn-ambiguous-fields -Wno-x-partial -Werror=missing-fields -Werror=incomplete-patterns
+    dependencies:
+    - base
+    - registry-server
+tests:
+  hspec:
+    main: Spec.hs
+    source-dirs: test
+    when:
+    - condition: os(darwin)
+      then:
+        ghc-options: -threaded -O0 -fwarn-unused-imports -fno-warn-warnings-deprecations -fno-warn-ambiguous-fields -Wno-x-partial -Werror=missing-fields -Werror=incomplete-patterns
+      else:
+        ghc-options: -threaded -O2 -fwarn-unused-imports -fno-warn-warnings-deprecations -fno-warn-ambiguous-fields -Wno-x-partial -Werror=missing-fields -Werror=incomplete-patterns
+    dependencies:
+    - shared-common
+    - registry-public
+    - base
+    - aeson
+    - bytestring
+    - case-insensitive
+    - containers
+    - data-default
+    - http-types
+    - mtl
+    - monad-control
+    - monad-logger
+    - network
+    - pretty-simple
+    - pwstore-fast
+    - random
+    - regex-compat
+    - resource-pool
+    - servant
+    - servant-server
+    - servant-errors
+    - text
+    - time
+    - transformers
+    - unordered-containers
+    - uuid
+    - vector
+    - wai
+    - wai-extra
+    - warp
+    - yaml
+    - registry-server
+    - hspec
+    - hspec-expectations-pretty-diff
+    - hspec-wai
+
+default-extensions:
+  - DataKinds
+  - DeriveGeneric
+  - DisambiguateRecordFields
+  - DuplicateRecordFields
+  - ExistentialQuantification
+  - ExtendedDefaultRules
+  - FlexibleContexts
+  - FlexibleInstances
+  - FunctionalDependencies
+  - GeneralizedNewtypeDeriving
+  - LambdaCase
+  - MultiParamTypeClasses
+  - OverloadedStrings
+  - OverloadedRecordDot
+  - QuasiQuotes
+  - RankNTypes
+  - RecordWildCards
+  - ScopedTypeVariables
+  - TemplateHaskell
+  - TypeApplications
+  - TypeFamilies
+  - TypeOperators
+  - TypeSynonymInstances
+  - UnicodeSyntax

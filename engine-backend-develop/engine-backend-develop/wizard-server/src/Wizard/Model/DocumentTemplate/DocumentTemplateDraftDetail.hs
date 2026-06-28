@@ -1,0 +1,30 @@
+module Wizard.Model.DocumentTemplate.DocumentTemplateDraftDetail where
+
+import Data.Time
+import qualified Data.UUID as U
+import GHC.Generics
+
+import Shared.DocumentTemplate.Model.DocumentTemplate.DocumentTemplate
+import Shared.KnowledgeModel.Model.KnowledgeModel.Package.KnowledgeModelPackagePattern
+import Wizard.Model.KnowledgeModel.Editor.KnowledgeModelEditorSuggestion
+import Wizard.Model.Project.ProjectSuggestion
+
+data DocumentTemplateDraftDetail = DocumentTemplateDraftDetail
+  { uuid :: U.UUID
+  , name :: String
+  , templateId :: String
+  , version :: String
+  , description :: String
+  , readme :: String
+  , license :: String
+  , allowedPackages :: [KnowledgeModelPackagePattern]
+  , formats :: [DocumentTemplateFormat]
+  , projectUuid :: Maybe U.UUID
+  , project :: Maybe ProjectSuggestion
+  , knowledgeModelEditorUuid :: Maybe U.UUID
+  , knowledgeModelEditor :: Maybe KnowledgeModelEditorSuggestion
+  , formatUuid :: Maybe U.UUID
+  , createdAt :: UTCTime
+  , updatedAt :: UTCTime
+  }
+  deriving (Show, Eq, Generic)

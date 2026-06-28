@@ -1,0 +1,24 @@
+module Registry.Localization.Messages.Internal where
+
+-- --------------------------------------
+-- SERVICE
+-- --------------------------------------
+-- Knowledge Model Bundle
+_ERROR_SERVICE_KMB__MAIN_PKG_ABSENCE = "Knowledge Model Bundle doesn't contain main package"
+
+-- Organization
+_ERROR_SERVICE_ORGANIZATION__ACTIVATION_EMAIL_NOT_SENT =
+  "The activation email could not be sent. Please contact administrator."
+
+_ERROR_SERVICE_ORGANIZATION__RECOVERY_EMAIL_NOT_SENT =
+  "The recovery email could not be sent. Please contact administrator."
+
+-- Package
+_ERROR_SERVICE_PKG__IMPORT_PARENT_PKG_AT_FIRST parentPkgId pkgId =
+  "The parent ('"
+    ++ parentPkgId
+    ++ "') of imported knowledge model package ('"
+    ++ pkgId
+    ++ "') is missing. Please import the parent first."
+
+_ERROR_SERVICE_PKG__OWNERSHIP_MISMATCH pkgId = "You can not push package which you do not own ('" ++ pkgId ++ "')"

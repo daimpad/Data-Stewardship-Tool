@@ -1,0 +1,295 @@
+name: Build
+
+on:
+  push:
+  schedule:
+  - cron: '0 2 * * *'
+
+jobs:
+  btp:
+    name: Build-Tag-Push
+    runs-on: ubuntu-24.04
+
+    if: github.repository == 'ds-wizard/engine-backend'
+
+    strategy:
+      matrix:
+        component: [registry, wizard]
+    
+    env:
+      COMPONENT: ${{ matrix.component }}
+      IMAGE_NAME: ${{ matrix.component }}-server
+      PUBLIC_IMAGE_PREFIX: datastewardshipwizard
+      DOCKER_META_CONTEXT: './${{ matrix.component }}-server'
+      DOCKER_META_FILE: './${{ matrix.component }}-server/Dockerfile'
+      DOCKER_META_PLATFORMS: 'linux/amd64'
+      STACK_VERSION: '3.9.3'
+      PYTHONPATH: ${{ github.workspace }}/lib
+      LD_LIBRARY_PATH: ${{ github.workspace }}/lib
+      ENGINE_JINJA_VERSION: 'v1.0.0'
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+        - 5432:5432
+        options: --name postgres
+      minio:
+        image: fclairamb/minio-github-actions
+        ports:
+          - 9000:9000
+        options: --name minio
+
+    steps:
+    - name: Detect force push
+      if: github.event_name == 'push' && github.event.forced
+      run: echo "Force push detected. Cache may be invalidated..."
+
+    - name: Checkout git repository
+      uses: actions/checkout@v6
+
+    - name: Fetch all git history
+      run: |
+        git fetch --prune --unshallow
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y liblzma-dev
+
+    - name: Prepare ~/.local/bin
+      run: |
+        mkdir -p ~/.local/bin
+        export PATH=~/.local/bin:$PATH
+
+    - name: Setup Python
+      if: matrix.component == 'wizard'
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.12'
+
+    - name: Prepare lib directory
+      if: matrix.component == 'wizard'
+      run: |
+        mkdir -p lib
+        curl -L -o libjinja.tar.gz  https://github.com/ds-wizard/engine-jinja/releases/download/$ENGINE_JINJA_VERSION/libjinja-python3.12-ubuntu-24.04-X64.tar.gz
+        tar --strip-components=1 -xzf libjinja.tar.gz -C lib
+        rm libjinja.tar.gz
+        ls -la lib
+
+# (1) -> Setup cache
+    - name: Cache ~/.stack
+      id: cache-stack
+      uses: actions/cache@v5
+      with:
+        path: ~/.stack
+        key: stack-home-ubuntu24-${{ hashFiles('**/package.yaml')}}-${{ hashFiles('**/stack.yaml*') }}
+        restore-keys: |
+          stack-home-ubuntu24-
+    
+    - name: Cache shared-common
+      id: cache-shared-common
+      uses: actions/cache@v5
+      with:
+        path: shared-common/.stack-work
+        key: shared-common-ubuntu24-${{ hashFiles('shared-common/package.yaml')}}-${{ hashFiles('shared-common/**/*.hs') }}
+        restore-keys: |
+          shared-common-ubuntu24-${{ hashFiles('shared-common/package.yaml')}}-
+          shared-common-ubuntu24-
+    
+    - name: Invalidate shared-common cache (force push)
+      id: invalidate-cache-shared-common
+      if: github.event_name == 'push' && github.event.forced && steps.cache-shared-common.outputs.cache-hit != 'true'
+      run: |
+        rm -rf shared-common/.stack-work
+    
+    - name: Cache wizard-public
+      id: cache-wizard-public
+      uses: actions/cache@v5
+      with:
+        path: wizard-public/.stack-work
+        key: wizard-public-ubuntu24-${{ hashFiles('wizard-public/package.yaml')}}-${{ hashFiles('wizard-public/**/*.hs') }}
+        restore-keys: |
+          wizard-public-ubuntu24-${{ hashFiles('wizard-public/package.yaml')}}-
+          wizard-public-ubuntu24-
+    
+    - name: Invalidate wizard-public cache (force push)
+      id: invalidate-cache-wizard-public
+      if: github.event_name == 'push' && github.event.forced && steps.cache-wizard-public.outputs.cache-hit != 'true'
+      run: |
+        rm -rf wizard-public/.stack-work
+    
+    - name: Cache registry-public
+      id: cache-registry-public
+      uses: actions/cache@v5
+      with:
+        path: registry-public/.stack-work
+        key: registry-public-ubuntu24-${{ hashFiles('registry-public/package.yaml')}}-${{ hashFiles('registry-public/**/*.hs') }}
+        restore-keys: |
+          registry-public-ubuntu24-${{ hashFiles('registry-public/package.yaml')}}-
+          registry-public-ubuntu24-
+    
+    - name: Invalidate registry-public cache (force push)
+      id: invalidate-cache-registry-public
+      if: github.event_name == 'push' && github.event.forced && steps.cache-registry-public.outputs.cache-hit != 'true'
+      run: |
+        rm -rf registry-public/.stack-work
+
+    - name: Cache registry-server
+      id: cache-registry-server
+      uses: actions/cache@v5
+      with:
+        path: registry-server/.stack-work
+        key: registry-server-${{ matrix.component }}-ubuntu24-${{ hashFiles('registry-server/package.yaml')}}-${{ hashFiles('registry-server/**/*.hs') }}
+        restore-keys: |
+          registry-server-${{ matrix.component }}-ubuntu24-${{ hashFiles('registry-server/package.yaml')}}-
+          registry-server-${{ matrix.component }}-ubuntu24-
+    
+    - name: Invalidate registry-server cache (force push)
+      id: invalidate-cache-registry-server
+      if: github.event_name == 'push' && github.event.forced && steps.cache-registry-server.outputs.cache-hit != 'true'
+      run: |
+        rm -rf registry-server/.stack-work
+    
+    - name: Cache wizard-server
+      id: cache-wizard-server
+      uses: actions/cache@v5
+      if: matrix.component == 'wizard'
+      with:
+        path: wizard-server/.stack-work
+        key: wizard-server-${{ matrix.component }}-ubuntu24-${{ hashFiles('wizard-server/package.yaml')}}-${{ hashFiles('wizard-server/**/*.hs') }}
+        restore-keys: |
+          wizard-server-${{ matrix.component }}-ubuntu24-${{ hashFiles('wizard-server/package.yaml')}}-
+          wizard-server-${{ matrix.component }}-ubuntu24-
+    
+    - name: Invalidate wizard-server cache (force push)
+      id: invalidate-cache-wizard-server
+      if: github.event_name == 'push' && github.event.forced && steps.cache-wizard-server.outputs.cache-hit != 'true'
+      run: |
+        rm -rf wizard-server/.stack-work
+    
+    - name: Cache Stack in ~/.local/bin
+      id: cache-stack-local-bin
+      uses: actions/cache@v5
+      with:
+        path: ~/.local/bin
+        key: stack-local-bin-ubuntu24-${{ matrix.stack }}
+
+# (2) -> Prepare and install dependencies     
+    - name: Setup stack
+      if: steps.cache-stack-local-bin.outputs.cache-hit != 'true'
+      run: |
+        curl -L https://github.com/commercialhaskell/stack/releases/download/v$STACK_VERSION/stack-$STACK_VERSION-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack';
+        
+    - name: Update config and build info
+      run: |
+        ./scripts/update-file-timestamps.sh
+        ./scripts/expand-example-files.sh
+        ./scripts/generate-build-info.sh $COMPONENT-server
+
+    - name: Install GHC and dependencies
+      run: |
+        stack test --no-terminal --install-ghc --only-dependencies
+        
+# (3) -> Build binary
+    - name: Build and test application 
+      run: |
+        set -o pipefail
+        stack test $COMPONENT-server --no-terminal --skip-ghc-check 2>&1 | tee log.txt
+        set +o pipefail
+        WARNINGS=$(grep -o ': warning: ' log.txt | wc -l)
+        if [ $WARNINGS -gt "0" ]; then
+          echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          echo "!! GHC WARNINGS DETECTED ($WARNINGS):"
+          grep ': warning: ' -A 3 log.txt
+          echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          exit 1
+        fi
+        cp $(stack path --local-install-root)/bin/$COMPONENT-server $COMPONENT-server/$COMPONENT-server-bin
+      env:
+        FEEDBACK_TOKEN: ${{ secrets.FEEDBACK_TOKEN }}
+
+    - name: Prepare dist directory
+      run: |
+        cd $COMPONENT-server/
+        make dist
+        ls -lahR dist
+
+# (4.1) -> Docker build (test)
+    - name: Docker meta [test]
+      id: meta-test
+      uses: docker/metadata-action@v6
+      with:
+        images: |
+          ${{ env.PUBLIC_IMAGE_PREFIX }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=sha
+
+    - name: Docker build [test]
+      uses: docker/build-push-action@v7
+      with:
+        context: ${{ env.DOCKER_META_CONTEXT }}
+        file: ${{ env.DOCKER_META_FILE }}
+        platforms: ${{ env.DOCKER_META_PLATFORMS }}
+        push: false
+        tags: ${{ steps.meta-test.outputs.tags }}
+        labels: ${{ steps.meta-test.outputs.labels }}
+
+# (4.2) -> Docker login
+    - name: Docker login [docker.io]
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v4
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+# (4.3) -> Docker build+push (dev)
+    - name: Docker meta [dev]
+      id: meta-dev
+      if: github.event_name != 'pull_request'
+      uses: docker/metadata-action@v6
+      with:
+        images: |
+          ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+
+    - name: Docker build+push [dev]
+      uses: docker/build-push-action@v7
+      if: github.event_name != 'pull_request' && steps.meta-dev.outputs.tags != ''
+      with:
+        context: ${{ env.DOCKER_META_CONTEXT }}
+        file: ${{ env.DOCKER_META_FILE }}
+        platforms: ${{ env.DOCKER_META_PLATFORMS }}
+        push: true
+        tags: ${{ steps.meta-dev.outputs.tags }}
+        labels: ${{ steps.meta-dev.outputs.labels }}
+
+# (4.4) -> Docker build+push (public)
+    - name: Docker meta [public]
+      id: meta-public
+      if: github.event_name != 'pull_request'
+      uses: docker/metadata-action@v6
+      with:
+        images: |
+          ${{ env.PUBLIC_IMAGE_PREFIX }}/${{ env.IMAGE_NAME }}
+          ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+
+    - name: Docker build+push [public]
+      uses: docker/build-push-action@v7
+      if: github.event_name != 'pull_request' && steps.meta-public.outputs.tags != ''
+      with:
+        context: ${{ env.DOCKER_META_CONTEXT }}
+        file: ${{ env.DOCKER_META_FILE }}
+        platforms: ${{ env.DOCKER_META_PLATFORMS }}
+        push: true
+        tags: ${{ steps.meta-public.outputs.tags }}
+        labels: ${{ steps.meta-public.outputs.labels }}

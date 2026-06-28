@@ -1,0 +1,72 @@
+module Wizard.Api.Resource.Config.ClientConfigJM where
+
+import Data.Aeson
+
+import Shared.Common.Api.Resource.Config.SimpleFeatureJM ()
+import Shared.Common.Util.Aeson
+import Shared.OpenId.Api.Resource.OpenId.Client.Definition.OpenIdClientStyleJM ()
+import Wizard.Api.Resource.Config.ClientConfigDTO
+import Wizard.Api.Resource.Plugin.PluginListJM ()
+import Wizard.Api.Resource.Tenant.Config.TenantConfigJM ()
+import Wizard.Api.Resource.User.UserProfileJM ()
+import WizardLib.Public.Api.Resource.OpenId.Client.Definition.OpenIdClientSimpleJM ()
+
+instance FromJSON ClientConfigDTO where
+  parseJSON = genericParseJSON (jsonOptionsWithTypeField "type")
+
+instance ToJSON ClientConfigDTO where
+  toJSON = genericToJSON (jsonOptionsWithTypeField "type")
+
+instance FromJSON ClientConfigAuthDTO where
+  parseJSON = genericParseJSON jsonOptions
+
+instance ToJSON ClientConfigAuthDTO where
+  toJSON = genericToJSON jsonOptions
+
+instance FromJSON ClientConfigAuthExternalDTO where
+  parseJSON = genericParseJSON jsonOptions
+
+instance ToJSON ClientConfigAuthExternalDTO where
+  toJSON = genericToJSON jsonOptions
+
+instance FromJSON ClientConfigRegistryDTO where
+  parseJSON = genericParseJSON jsonOptions
+
+instance ToJSON ClientConfigRegistryDTO where
+  toJSON = genericToJSON jsonOptions
+
+instance FromJSON ClientConfigProjectDTO where
+  parseJSON = genericParseJSON jsonOptions
+
+instance ToJSON ClientConfigProjectDTO where
+  toJSON = genericToJSON jsonOptions
+
+instance FromJSON ClientConfigCloudDTO where
+  parseJSON = genericParseJSON jsonOptions
+
+instance ToJSON ClientConfigCloudDTO where
+  toJSON = genericToJSON jsonOptions
+
+instance FromJSON ClientConfigAdminDTO where
+  parseJSON = genericParseJSON jsonOptions
+
+instance ToJSON ClientConfigAdminDTO where
+  toJSON = genericToJSON jsonOptions
+
+instance FromJSON ClientConfigFeaturesDTO where
+  parseJSON = genericParseJSON jsonOptions
+
+instance ToJSON ClientConfigFeaturesDTO where
+  toJSON = genericToJSON jsonOptions
+
+instance FromJSON ClientConfigSignalBridgeDTO where
+  parseJSON = genericParseJSON jsonOptions
+
+instance ToJSON ClientConfigSignalBridgeDTO where
+  toJSON = genericToJSON jsonOptions
+
+instance FromJSON ClientConfigModuleDTO where
+  parseJSON = genericParseJSON jsonOptions
+
+instance ToJSON ClientConfigModuleDTO where
+  toJSON = genericToJSON jsonOptions

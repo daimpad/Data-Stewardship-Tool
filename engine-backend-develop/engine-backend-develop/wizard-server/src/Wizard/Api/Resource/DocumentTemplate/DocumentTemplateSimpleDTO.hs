@@ -1,0 +1,25 @@
+module Wizard.Api.Resource.DocumentTemplate.DocumentTemplateSimpleDTO where
+
+import Data.Time
+import qualified Data.UUID as U
+import GHC.Generics
+
+import RegistryLib.Model.Organization.OrganizationSimple
+import Shared.DocumentTemplate.Model.DocumentTemplate.DocumentTemplate
+import Wizard.Model.DocumentTemplate.DocumentTemplateState
+
+data DocumentTemplateSimpleDTO = DocumentTemplateSimpleDTO
+  { uuid :: U.UUID
+  , name :: String
+  , organizationId :: String
+  , templateId :: String
+  , version :: String
+  , phase :: DocumentTemplatePhase
+  , remoteLatestVersion :: Maybe String
+  , description :: String
+  , nonEditable :: Bool
+  , state :: DocumentTemplateState
+  , organization :: Maybe OrganizationSimple
+  , createdAt :: UTCTime
+  }
+  deriving (Show, Eq, Generic)

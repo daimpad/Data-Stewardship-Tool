@@ -1,0 +1,12 @@
+repositoryApi:
+  baseurl: https://mockserver.ds-wizard.org
+  apiKey: '123456'
+
+orcidPluginIntegration:
+  baseurl: https://mockserver.ds-wizard.org
+  apiKey: '123456'
+
+secrets:
+  repositoryApiUrl: https://mockserver.ds-wizard.org
+  repositoryApiKey: '123456'
+  repositoryPath: repository-api.json

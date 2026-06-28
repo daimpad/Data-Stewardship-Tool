@@ -1,0 +1,8 @@
+@import '../variables';
+@import '../mixins';
+
+.badge {
+    .fas, .far, .fab{
+        margin-right: $spacer-1;
+    }
+}

@@ -1,0 +1,66 @@
+version: 2
+updates:
+  - package-ecosystem: "elm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "08:00"
+      timezone: "Europe/Prague"
+    target-branch: "develop"
+    assignees:
+      - "janslifka"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "elm"
+    directory: "/review"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "08:00"
+      timezone: "Europe/Prague"
+    target-branch: "develop"
+    assignees:
+      - "janslifka"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "08:00"
+      timezone: "Europe/Prague"
+    target-branch: "develop"
+    assignees:
+      - "janslifka"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "npm"
+    directory: "/wizard-style-builder"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "08:00"
+      timezone: "Europe/Prague"
+    target-branch: "develop"
+    assignees:
+      - "janslifka"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "08:00"
+      timezone: "Europe/Prague"
+    target-branch: "develop"
+    assignees:
+      - "MarekSuchanek"
+    labels:
+      - "dependencies"

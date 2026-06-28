@@ -1,0 +1,284 @@
+module Wizard.Database.Migration.Development.Tenant.Data.TenantConfigs where
+
+import qualified Data.Map.Strict as M
+
+import Shared.Common.Constant.Tenant
+import Shared.Common.Model.Common.SensitiveData
+import Shared.Common.Model.Config.SimpleFeature
+import Shared.Common.Util.Date
+import Shared.Common.Util.Uuid
+import Shared.DocumentTemplate.Database.Migration.Development.DocumentTemplate.Data.DocumentTemplateFormats
+import Shared.DocumentTemplate.Database.Migration.Development.DocumentTemplate.Data.DocumentTemplates
+import Shared.DocumentTemplate.Model.DocumentTemplate.DocumentTemplate
+import Wizard.Api.Resource.Tenant.Config.TenantConfigChangeDTO
+import Wizard.Database.Migration.Development.Tenant.Data.Tenants
+import Wizard.Model.Project.Project
+import Wizard.Model.Tenant.Config.TenantConfig
+import Wizard.Model.Tenant.Config.TenantConfigEM ()
+import Wizard.Model.Tenant.Tenant
+import Wizard.Service.Tenant.Config.ConfigMapper
+import WizardLib.Public.Database.Migration.Development.Tenant.Data.TenantConfigs
+
+defaultSecret = "01234567890123456789012345678901"
+
+defaultTenantConfig :: TenantConfig
+defaultTenantConfig =
+  TenantConfig
+    { uuid = defaultTenant.uuid
+    , organization = defaultOrganization
+    , authentication = defaultAuthentication
+    , privacyAndSupport = defaultPrivacyAndSupport
+    , dashboardAndLoginScreen = defaultDashboardAndLoginScreen
+    , lookAndFeel = defaultLookAndFeel
+    , registry = defaultRegistry
+    , project = defaultProject
+    , submission = defaultSubmission
+    , owl = defaultOwl
+    , mailConfigUuid = Nothing
+    , features = defaultFeatures
+    , createdAt = dt' 2018 1 20
+    , updatedAt = dt' 2018 1 20
+    }
+
+defaultTenantConfigChangeDto :: TenantConfigChangeDTO
+defaultTenantConfigChangeDto = toChangeDTO defaultOrganizationChangeDto defaultAuthenticationChangeDto defaultPrivacyAndSupportChangeDto defaultDashboardAndLoginScreenChangeDto defaultLookAndFeelChangeDto defaultRegistryChangeDto defaultProjectChangeDto defaultSubmissionChangeDto defaultFeaturesChangeDto
+
+defaultOrganization :: TenantConfigOrganization
+defaultOrganization = fromOrganizationChangeDTO defaultOrganizationChangeDto defaultTenant.uuid (dt' 2018 1 20) (dt' 2018 1 20)
+
+defaultOrganizationChangeDto :: TenantConfigOrganizationChangeDTO
+defaultOrganizationChangeDto =
+  TenantConfigOrganizationChangeDTO
+    { name = "Organization Amsterdam"
+    , description = "Some description of Organization Amsterdam"
+    , organizationId = "org.nl.amsterdam"
+    , affiliations = []
+    }
+
+defaultAuthentication :: TenantConfigAuthentication
+defaultAuthentication = fromAuthenticationChangeDTO defaultAuthenticationChangeDto defaultTenant.uuid (dt' 2018 1 20) (dt' 2018 1 20)
+
+defaultAuthenticationEncrypted :: TenantConfigAuthentication
+defaultAuthenticationEncrypted = process defaultSecret defaultAuthentication
+
+defaultAuthenticationChangeDto :: TenantConfigAuthenticationChangeDTO
+defaultAuthenticationChangeDto =
+  TenantConfigAuthenticationChangeDTO
+    { defaultRoleUuid = u' "a0000000-0000-0000-0000-000000000003"
+    , internal = defaultAuthenticationInternal
+    }
+
+defaultAuthenticationInternal :: TenantConfigAuthenticationInternal
+defaultAuthenticationInternal = TenantConfigAuthenticationInternal {registration = SimpleFeature True, nonAdminLoginEnabled = True, sessionExpiration = 14 * 24, userEmailLinkExpiration = 14 * 24, twoFactorAuth = defaultAuthenticationInternalTwoFactorAuth}
+
+defaultAuthenticationInternalTwoFactorAuth :: TenantConfigAuthenticationInternalTwoFactorAuth
+defaultAuthenticationInternalTwoFactorAuth =
+  TenantConfigAuthenticationInternalTwoFactorAuth
+    { enabled = False
+    , codeLength = 6
+    , expiration = 600
+    }
+
+defaultPrivacyAndSupport :: TenantConfigPrivacyAndSupport
+defaultPrivacyAndSupport = fromPrivacyAndSupportChangeDTO defaultPrivacyAndSupportChangeDto defaultTenant.uuid (dt' 2018 1 20) (dt' 2018 1 20)
+
+defaultPrivacyAndSupportChangeDto :: TenantConfigPrivacyAndSupportChangeDTO
+defaultPrivacyAndSupportChangeDto =
+  TenantConfigPrivacyAndSupportChangeDTO
+    { privacyUrl = Nothing
+    , termsOfServiceUrl = Nothing
+    , supportEmail = Nothing
+    , supportSiteName = Nothing
+    , supportSiteUrl = Nothing
+    , supportSiteIcon = Nothing
+    }
+
+defaultDashboardAndLoginScreen :: TenantConfigDashboardAndLoginScreen
+defaultDashboardAndLoginScreen = fromDashboardAndLoginScreenChangeDTO defaultDashboardAndLoginScreenChangeDto defaultTenant.uuid (dt' 2018 1 20) (dt' 2018 1 20)
+
+defaultDashboardAndLoginScreenChangeDto :: TenantConfigDashboardAndLoginScreenChangeDTO
+defaultDashboardAndLoginScreenChangeDto =
+  TenantConfigDashboardAndLoginScreenChangeDTO
+    { dashboardType = WelcomeDashboardType
+    , announcements = [defaultDashboardAndLoginScreenAnnouncementChangeDto]
+    , loginInfo = Nothing
+    , loginInfoSidebar = Nothing
+    }
+
+defaultRegistry :: TenantConfigRegistry
+defaultRegistry = fromRegistryChangeDTO defaultRegistryChangeDto defaultTenant.uuid (dt' 2018 1 20) (dt' 2018 1 20)
+
+defaultRegistryEncrypted :: TenantConfigRegistry
+defaultRegistryEncrypted = process defaultSecret defaultRegistry
+
+defaultRegistryChangeDto :: TenantConfigRegistryChangeDTO
+defaultRegistryChangeDto =
+  TenantConfigRegistryChangeDTO
+    { enabled = True
+    , token = "GlobalToken"
+    }
+
+defaultProject :: TenantConfigProject
+defaultProject = fromProjectChangeDTO defaultProjectChangeDto defaultTenant.uuid (dt' 2018 1 20) (dt' 2018 1 20)
+
+defaultProjectEncrypted :: TenantConfigProject
+defaultProjectEncrypted = process defaultSecret defaultProject
+
+defaultProjectChangeDto :: TenantConfigProjectChangeDTO
+defaultProjectChangeDto =
+  TenantConfigProjectChangeDTO
+    { projectVisibility = defaultProjectVisibility
+    , projectSharing = defaultProjectSharing
+    , projectCreation = TemplateAndCustomProjectCreation
+    , projectTagging = defaultProjectProjectTagging
+    , summaryReport = SimpleFeature True
+    , feedback = defaultFeedback
+    }
+
+defaultProjectVisibility :: TenantConfigProjectVisibility
+defaultProjectVisibility =
+  TenantConfigProjectVisibility
+    { enabled = True
+    , defaultValue = PrivateProjectVisibility
+    }
+
+defaultProjectSharing :: TenantConfigProjectSharing
+defaultProjectSharing =
+  TenantConfigProjectSharing
+    { enabled = True
+    , defaultValue = RestrictedProjectSharing
+    , anonymousEnabled = False
+    }
+
+_SETTINGS__PROJECT_TAG_1 = "settingsProjectTag1"
+
+_SETTINGS__PROJECT_TAG_2 = "settingsProjectTag2"
+
+defaultProjectProjectTagging :: TenantConfigProjectProjectTagging
+defaultProjectProjectTagging =
+  TenantConfigProjectProjectTagging
+    { enabled = True
+    , tags = [_SETTINGS__PROJECT_TAG_1, _SETTINGS__PROJECT_TAG_2]
+    }
+
+defaultFeedback :: TenantConfigProjectFeedback
+defaultFeedback =
+  TenantConfigProjectFeedback
+    { enabled = True
+    , token = ""
+    , owner = "DSWGlobal"
+    , repo = "dsw-test"
+    }
+
+defaultSubmission :: TenantConfigSubmission
+defaultSubmission = fromSubmissionChangeDTO defaultSubmissionChangeDto defaultTenant.uuid (dt' 2018 1 20) (dt' 2018 1 20)
+
+defaultSubmissionChangeDto :: TenantConfigSubmissionChangeDTO
+defaultSubmissionChangeDto =
+  TenantConfigSubmissionChangeDTO
+    { enabled = True
+    , services = [defaultSubmissionServiceChangeDto]
+    }
+
+defaultSubmissionChangeEmptyDto :: TenantConfigSubmissionChangeDTO
+defaultSubmissionChangeEmptyDto =
+  TenantConfigSubmissionChangeDTO
+    { enabled = True
+    , services = []
+    }
+
+defaultSubmissionService :: TenantConfigSubmissionService
+defaultSubmissionService = fromSubmissionServiceChangeDTO defaultSubmissionServiceChangeDto defaultTenant.uuid (dt' 2018 1 20) (dt' 2018 1 20)
+
+defaultSubmissionServiceChangeDto :: TenantConfigSubmissionServiceChangeDTO
+defaultSubmissionServiceChangeDto =
+  TenantConfigSubmissionServiceChangeDTO
+    { sId = "mySubmissionServer"
+    , name = "My Submission Server"
+    , description = "Some description"
+    , props = [defaultSubmissionServiceApiTokenProp, defaultSubmissionServiceSecretProp]
+    , supportedFormats = [defaultSubmissionServiceSupportedFormatChangeDto]
+    , request = defaultSubmissionServiceRequestChangeDto
+    }
+
+defaultSubmissionServiceApiTokenProp :: String
+defaultSubmissionServiceApiTokenProp = "API Token"
+
+defaultSubmissionServiceSecretProp :: String
+defaultSubmissionServiceSecretProp = "Secret"
+
+defaultSubmissionServiceSupportedFormat :: TenantConfigSubmissionServiceSupportedFormat
+defaultSubmissionServiceSupportedFormat = fromSubmissionServiceSupportedFormatChangeDTO defaultSubmissionServiceSupportedFormatChangeDto defaultTenant.uuid defaultSubmissionServiceChangeDto.sId
+
+defaultSubmissionServiceSupportedFormatChangeDto :: TenantConfigSubmissionServiceSupportedFormatChangeDTO
+defaultSubmissionServiceSupportedFormatChangeDto =
+  TenantConfigSubmissionServiceSupportedFormatChangeDTO
+    { templateUuid = wizardDocumentTemplate.uuid
+    , formatUuid = formatJson.uuid
+    }
+
+defaultSubmissionServiceRequest :: TenantConfigSubmissionServiceRequest
+defaultSubmissionServiceRequest = fromSubmissionServiceRequestChangeDTO defaultSubmissionServiceRequestChangeDto
+
+defaultSubmissionServiceRequestChangeDto :: TenantConfigSubmissionServiceRequestChangeDTO
+defaultSubmissionServiceRequestChangeDto =
+  TenantConfigSubmissionServiceRequestChangeDTO
+    { method = "GET"
+    , url = "https://mockserver.ds-wizard.org/submission.json"
+    , headers = M.fromList [("Api-Key", "${API Token}")]
+    , multipart = defaultSubmissionServiceRequestMultipartChangeDto
+    }
+
+defaultSubmissionServiceRequestMultipart :: TenantConfigSubmissionServiceRequestMultipart
+defaultSubmissionServiceRequestMultipart = fromSubmissionServiceRequestMultipartChangeDTO defaultSubmissionServiceRequestMultipartChangeDto
+
+defaultSubmissionServiceRequestMultipartChangeDto :: TenantConfigSubmissionServiceRequestMultipartChangeDTO
+defaultSubmissionServiceRequestMultipartChangeDto =
+  TenantConfigSubmissionServiceRequestMultipartChangeDTO
+    { enabled = False
+    , fileName = "file"
+    }
+
+defaultFeaturesChangeDto :: TenantConfigFeaturesChangeDTO
+defaultFeaturesChangeDto =
+  TenantConfigFeaturesChangeDTO
+    { toursEnabled = True
+    }
+
+defaultOwl :: TenantConfigOwl
+defaultOwl =
+  TenantConfigOwl
+    { tenantUuid = defaultTenant.uuid
+    , enabled = False
+    , name = ""
+    , organizationId = ""
+    , kmId = ""
+    , version = ""
+    , previousKnowledgeModelPackageId = Nothing
+    , rootElement = ""
+    , createdAt = dt' 2018 1 20
+    , updatedAt = dt' 2018 1 20
+    }
+
+-- ------------------------------------------------------------
+-- ------------------------------------------------------------
+editedProject :: TenantConfigProject
+editedProject = fromProjectChangeDTO editedProjectChangeDto defaultTenant.uuid (dt' 2018 1 20) (dt' 2018 1 20)
+
+editedProjectChangeDto :: TenantConfigProjectChangeDTO
+editedProjectChangeDto = defaultProjectChangeDto {summaryReport = SimpleFeature False}
+
+-- ------------------------------------------------------------
+-- ------------------------------------------------------------
+differentSubmission :: TenantConfigSubmission
+differentSubmission =
+  defaultSubmission
+    { tenantUuid = differentTenantUuid
+    , services = [differentSubmissionService]
+    }
+
+differentSubmissionService :: TenantConfigSubmissionService
+differentSubmissionService =
+  defaultSubmissionService
+    { tenantUuid = differentTenantUuid
+    }
