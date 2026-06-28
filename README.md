@@ -61,6 +61,9 @@ Browser und behält dabei die konzeptuelle Struktur bei.
   exportieren und wieder importieren (zum Teilen oder Sichern; eine Mini-Variante
   des DSW-Paketgedankens). Projekte lassen sich zudem **duplizieren** (entspricht
   dem Template-Gedanken des DSW).
+- **Vorlagen** — mitgelieferte, an etablierten DMP-Vorgaben orientierte
+  Wissensmodelle (**Science Europe / Horizon Europe**, **DFG-Checkliste**); per
+  „Übernehmen" als bearbeitbare Kopie in die eigene Bibliothek laden.
 - **Beispiel-Wissensmodell** wird beim ersten Start automatisch geladen.
 
 ## Schnellstart
@@ -178,8 +181,10 @@ js/app.js            Router + Bootstrap
 js/storage.js        Persistenz (localStorage)
 js/models.js         Domänen-Helfer
 js/util.js           kleine Helfer
+js/templates.js      Registry der mitgelieferten Vorlagen
 js/pages/*.js        Seiten/Views
 data/sample-km.json  Beispiel-Wissensmodell (Seed)
+data/templates/*.json  mitgelieferte DMP-Vorlagen (Science Europe, DFG)
 .github/workflows/static.yml   GitHub-Pages-Deployment
 engine-backend-develop/   Original-DSW (Haskell) — read-only Referenz
 engine-frontend-develop/  Original-DSW (Elm) — read-only Referenz
