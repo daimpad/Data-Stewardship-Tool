@@ -33,7 +33,7 @@ export function render(container) {
       <ul class="cards">
         ${projects.map((p) => {
           const km = kmsById[p.kmId];
-          const prog = km ? M.countProgress(km, p.replies) : { answered: 0, total: 0 };
+          const prog = km ? M.countProgress(km, p.replies, p.selectedTagIds) : { answered: 0, total: 0 };
           return `
             <li class="card">
               <div class="card-body">

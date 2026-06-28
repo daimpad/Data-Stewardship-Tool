@@ -60,6 +60,10 @@ PHP/MySQL backend (Stage 2) confined to that one file.
   Any question may also have `references: [{ label, url }]` (help links).
   Guidance text (question/chapter text, advice) is rendered via `util.md()` —
   a tiny XSS-safe Markdown subset (escape first, safe link schemes only).
+- **Tags**: `km.tags = [{ id, name, color }]`; questions reference them via
+  `tagIds`; a project picks `selectedTagIds`. `models.isVisibleByTags()` gates
+  rendering and `countProgress` (no selection = all visible; untagged always
+  visible). Questionnaire/document skip hidden questions and empty chapters.
 - **Project**: `{ kmId, name, replies }` where `replies` is a map keyed by a
   dotted **path** of ids (e.g. `q_personal.a_yes.q_legal`).
 - **Reply types**: `value` (string), `answer` (answer id), `multiChoice` (array of
