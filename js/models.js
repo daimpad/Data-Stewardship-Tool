@@ -50,11 +50,54 @@ export function newProject(kmId, name) {
 // Used when creating a question and when its type is changed in the editor.
 export function applyTypeDefaults(q, type) {
   const next = { id: q.id, type, title: q.title, text: q.text };
-  if (type === 'value') next.valueType = q.valueType || 'string';
+  if (type === 'value') {
+    next.valueType = q.valueType || 'string';
+    next.validations = q.validations || [];
+  }
   if (type === 'options') next.answers = q.answers || [newAnswer()];
   if (type === 'multiChoice') next.choices = q.choices || [newChoice()];
   if (type === 'list') next.itemTemplate = q.itemTemplate || [];
   return next;
+}
+
+// Validations for value questions (subset of the DSW's QuestionValidation).
+export const VALIDATION_TYPES = ['minLength', 'maxLength', 'pattern', 'min', 'max'];
+export const VALIDATION_LABELS = {
+  minLength: 'Min. Länge',
+  maxLength: 'Max. Länge',
+  pattern: 'Muster (Regex)',
+  min: 'Min. Wert',
+  max: 'Max. Wert',
+};
+
+export function newValidation(type = 'minLength') {
+  return { type, value: type === 'pattern' ? '' : 0 };
+}
+
+// Validate a raw value-question answer. Returns an error message (string) or
+// null if valid. An empty value is treated as "unanswered", not an error.
+export function validateValue(q, raw) {
+  const v = (raw ?? '').toString();
+  if (v === '') return null;
+
+  const vt = q.valueType || 'string';
+  if (vt === 'number' && Number.isNaN(Number(v))) return 'Bitte eine Zahl eingeben.';
+  if (vt === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Bitte eine gültige E-Mail-Adresse eingeben.';
+  if (vt === 'url') { try { new URL(v); } catch { return 'Bitte eine gültige URL eingeben.'; } }
+
+  for (const rule of q.validations || []) {
+    const n = Number(rule.value);
+    if (rule.type === 'minLength' && v.length < n) return `Mindestens ${n} Zeichen.`;
+    if (rule.type === 'maxLength' && v.length > n) return `Höchstens ${n} Zeichen.`;
+    if (rule.type === 'min' && Number(v) < n) return `Mindestwert ${n}.`;
+    if (rule.type === 'max' && Number(v) > n) return `Höchstwert ${n}.`;
+    if (rule.type === 'pattern' && rule.value) {
+      let re = null;
+      try { re = new RegExp(rule.value); } catch { re = null; }
+      if (re && !re.test(v)) return `Entspricht nicht dem Muster: ${rule.value}`;
+    }
+  }
+  return null;
 }
 
 // --- Tree walking --------------------------------------------------------
@@ -139,6 +182,29 @@ export function findMultiChoiceQuestionByChoice(km, choiceId) {
   return found;
 }
 
+// Resolve the question object that a reply path points at. Path segments
+// alternate question-id / (answer-id | item-id) / question-id / ...
+export function questionAtPath(km, path) {
+  const seg = path.split('.');
+  let pool = km.chapters.flatMap((c) => c.questions);
+  let q = null;
+  for (let i = 0; i < seg.length; i += 2) {
+    q = pool.find((x) => x.id === seg[i]);
+    if (!q) return null;
+    if (i + 1 < seg.length) {
+      if (q.type === 'options') {
+        const a = q.answers.find((x) => x.id === seg[i + 1]);
+        pool = a ? a.followUps : [];
+      } else if (q.type === 'list') {
+        pool = q.itemTemplate; // seg[i+1] is an item id; sub-questions are the template
+      } else {
+        return null;
+      }
+    }
+  }
+  return q;
+}
+
 // Swap an item up/down within its array (used for reordering).
 export function move(arr, id, dir) {
   if (!arr) return;
@@ -161,7 +227,7 @@ export function countProgress(km, replies) {
     const r = replies[path];
     if (q.type === 'value') {
       total++;
-      if (r && r.value !== '' && r.value != null) answered++;
+      if (r && r.value !== '' && r.value != null && validateValue(q, r.value) === null) answered++;
     } else if (q.type === 'options') {
       total++;
       if (r && r.value) {

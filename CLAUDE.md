@@ -53,6 +53,9 @@ PHP/MySQL backend (Stage 2) confined to that one file.
 
 - **Knowledge Model**: nested JSON — `chapters[] → questions[] → answers[] → followUps[]`.
 - **Question types** (4 only): `value`, `options`, `multiChoice`, `list`.
+  `value` questions may carry `validations: [{ type, value }]`
+  (`minLength`/`maxLength`/`pattern`/`min`/`max`); `models.validateValue()` also
+  checks number/email/url format by `valueType`.
 - **Project**: `{ kmId, name, replies }` where `replies` is a map keyed by a
   dotted **path** of ids (e.g. `q_personal.a_yes.q_legal`).
 - **Reply types**: `value` (string), `answer` (answer id), `multiChoice` (array of

@@ -58,8 +58,10 @@ export function render(container, params) {
 
     if (q.type === 'value') {
       const type = INPUT_TYPE[q.valueType] || 'text';
-      html += `<input class="q-input" type="${type}" data-kind="value" data-path="${esc(path)}"
+      const err = M.validateValue(q, r?.value ?? '');
+      html += `<input class="q-input${err ? ' invalid' : ''}" type="${type}" data-kind="value" data-path="${esc(path)}"
         value="${esc(r?.value ?? '')}">`;
+      html += `<p class="field-error" data-error-for="${esc(path)}">${err ? esc(err) : ''}</p>`;
     } else if (q.type === 'options') {
       html += q.answers.map((a) => `
         <label class="opt">
@@ -110,8 +112,14 @@ export function render(container, params) {
   body.addEventListener('input', (e) => {
     const t = e.target;
     if (t.dataset.kind !== 'value') return;
-    if (t.value === '') clear(t.dataset.path);
-    else set(t.dataset.path, { type: 'value', value: t.value });
+    const path = t.dataset.path;
+    if (t.value === '') clear(path);
+    else set(path, { type: 'value', value: t.value });
+    // live validation feedback without re-rendering (keeps focus)
+    const err = M.validateValue(M.questionAtPath(km, path), t.value);
+    t.classList.toggle('invalid', !!err);
+    const errEl = body.querySelector(`[data-error-for="${CSS.escape(path)}"]`);
+    if (errEl) errEl.textContent = err || '';
     updateProgress();
   });
 
