@@ -49,7 +49,8 @@ Browser und behält dabei die konzeptuelle Struktur bei.
 
 - **Wissensmodell-Editor** — Kapitel, Fragen und Antworten als Baum pflegen;
   verschachtelte Folgefragen, Mehrfachauswahl-Optionen und wiederholbare Listen;
-  Fragen/Kapitel umsortieren und löschen; Auto-Save.
+  optionale **Validierungen** für Wert-Fragen (Min/Max, Länge, Regex; dazu E-Mail-/
+  URL-/Zahl-Prüfung je Werttyp); Fragen/Kapitel umsortieren und löschen; Auto-Save.
 - **Fragebogen** — das Wissensmodell wird als Formular gerendert; Folgefragen und
   Listeneinträge erscheinen dynamisch; Live-Fortschrittsanzeige.
 - **Dokument** — die Antworten werden als gegliedertes, druckbares HTML
@@ -143,6 +144,11 @@ Vier der sieben DSW-Fragetypen sind abgebildet:
 | `options`     | Einfachauswahl; jede Antwort kann **Folgefragen** auslösen |
 | `multiChoice` | Mehrfachauswahl aus festen Optionen (Checkboxen) |
 | `list`        | Wiederholbare Gruppe (Item-Vorlage aus Unterfragen) |
+
+`value`-Fragen können **Validierungen** tragen (`validations: [{ type, value }]` mit
+`minLength`, `maxLength`, `pattern`, `min`, `max`); zusätzlich wird je `valueType`
+das Format geprüft (Zahl/E-Mail/URL). Im Fragebogen werden ungültige Eingaben
+markiert und zählen nicht als beantwortet.
 
 ## Routing
 

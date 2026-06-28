@@ -46,7 +46,11 @@ export function render(container, params) {
     else if (f === 'a-label') { const a = M.findAnswer(km, id); if (a) a.label = v; }
     else if (f === 'a-advice') { const a = M.findAnswer(km, id); if (a) a.advice = v; }
     else if (f === 'c-label') { const c = M.findChoice(km, id); if (c) c.label = v; }
-    else return;
+    else if (f === 'v-value') {
+      const q = M.findQuestion(km, e.target.dataset.qid);
+      const i = Number(e.target.dataset.idx);
+      if (q && q.validations && q.validations[i]) q.validations[i].value = v;
+    } else return;
     save();
   });
 
@@ -65,6 +69,11 @@ export function render(container, params) {
     } else if (f === 'q-valuetype') {
       const q = M.findQuestion(km, id);
       if (q) q.valueType = e.target.value;
+      save();
+    } else if (f === 'v-type') {
+      const q = M.findQuestion(km, e.target.dataset.qid);
+      const i = Number(e.target.dataset.idx);
+      if (q && q.validations && q.validations[i]) q.validations[i].type = e.target.value;
       save();
     }
   });
@@ -104,6 +113,13 @@ export function render(container, params) {
     } else if (action === 'del-choice') {
       const q = M.findMultiChoiceQuestionByChoice(km, id);
       if (q) q.choices = q.choices.filter((c) => c.id !== id);
+    } else if (action === 'add-validation') {
+      const q = M.findQuestion(km, id);
+      if (q) (q.validations ||= []).push(M.newValidation());
+    } else if (action === 'del-validation') {
+      const q = M.findQuestion(km, e.target.dataset.qid);
+      const i = Number(e.target.dataset.idx);
+      if (q && q.validations) q.validations.splice(i, 1);
     } else {
       return;
     }
@@ -169,6 +185,18 @@ function viewQuestion(q, idx, total) {
     </div>`;
 }
 
+function viewValidation(v, qId, idx) {
+  return `
+    <div class="ed-validation">
+      <select data-field="v-type" data-qid="${esc(qId)}" data-idx="${idx}">
+        ${M.VALIDATION_TYPES.map((t) =>
+          `<option value="${t}" ${t === v.type ? 'selected' : ''}>${M.VALIDATION_LABELS[t]}</option>`).join('')}
+      </select>
+      <input data-field="v-value" data-qid="${esc(qId)}" data-idx="${idx}" value="${esc(v.value)}" placeholder="Wert">
+      <button type="button" class="btn-sm danger" data-action="del-validation" data-qid="${esc(qId)}" data-idx="${idx}">✕</button>
+    </div>`;
+}
+
 function viewQuestionBody(q) {
   if (q.type === 'value') {
     return `<div class="ed-body">
@@ -177,6 +205,11 @@ function viewQuestionBody(q) {
           ${M.VALUE_TYPES.map((v) => `<option value="${v}" ${q.valueType === v ? 'selected' : ''}>${v}</option>`).join('')}
         </select>
       </label>
+      <div class="ed-validations">
+        <p class="muted small">Validierungen:</p>
+        ${(q.validations || []).map((v, i) => viewValidation(v, q.id, i)).join('')}
+        <button type="button" class="btn-sm" data-action="add-validation" data-id="${esc(q.id)}">+ Validierung</button>
+      </div>
     </div>`;
   }
   if (q.type === 'options') {

@@ -133,6 +133,9 @@ textarea { width: 100%; min-height: 3rem; resize: vertical; }
 .ed-choice { display: flex; gap: 0.4rem; align-items: center; }
 .ed-choice input { flex: 1; }
 .ed-followups, .ed-list .ed-questions { border-left: 2px dashed var(--border); padding-left: 0.7rem; margin-top: 0.4rem; }
+.ed-validations { margin-top: 0.5rem; padding-left: 0.6rem; border-left: 2px dashed var(--border); }
+.ed-validation { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.3rem; }
+.ed-validation input { flex: 1; }
 
 /* Questionnaire ----------------------------------------------------------- */
 .progress { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.2rem; }
@@ -145,6 +148,9 @@ textarea { width: 100%; min-height: 3rem; resize: vertical; }
 .q-title { display: block; font-weight: 600; margin-bottom: 0.2rem; }
 .q-text { margin: 0 0 0.4rem; font-size: 0.9rem; }
 .q-input { width: 100%; max-width: 32rem; }
+.q-input.invalid { border-color: var(--danger); outline-color: #f6d6d5; }
+.field-error { color: var(--danger); font-size: 0.85rem; margin: 0.2rem 0 0; }
+.field-error:empty { display: none; }
 .opt { display: block; margin: 0.2rem 0; cursor: pointer; }
 .opt input { margin-right: 0.4rem; }
 .advice { margin: 0.2rem 0 0.5rem 1.4rem; font-size: 0.9rem; color: var(--primary-dark); background: var(--accent); padding: 0.3rem 0.6rem; border-radius: 6px; }
