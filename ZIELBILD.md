@@ -90,8 +90,7 @@ Die Schichtung spiegelt die des DSW in schlanker Form wider:
   (ES-Module erfordern `http://`, nicht `file://`).
 
 ```bash
-cd data-stewart-tool
-python3 -m http.server 8000     # oder: npx serve .
+python3 -m http.server 8000     # im Repo-Root; oder: npx serve .
 # Browser: http://localhost:8000
 ```
 
@@ -245,7 +244,7 @@ Dadurch lassen sich Folgefragen und Listen-Einträge eindeutig verorten:
 | Knowledge Model (UUID-Graph) | verschachteltes KM-JSON | nur Kapitel/Fragen/Antworten/Folgefragen/Listen |
 | 7 Fragetypen | 4 Typen (`value`, `options`, `multiChoice`, `list`) | Integration/ItemSelect/File entfallen |
 | KM-Editor (event-sourced) | direkter JSON-Editor | keine Versionierung/Events |
-| Package + Registry | — | entfällt komplett |
+| Package + Registry | KM als JSON exportieren/importieren | nur Datei-Austausch, keine zentrale Registry |
 | Project + Replies | Projekt-JSON mit `replies`-Map | gleiche Pfad-Logik, reduziert |
 | Phasen / Metriken / Tags | — | entfallen |
 | Document Template (Jinja) | fest verdrahtetes HTML-Rendering | keine Template-Sprache |
@@ -256,25 +255,33 @@ Dadurch lassen sich Folgefragen und Listen-Einträge eindeutig verorten:
 
 ## 7. Ordnerstruktur (Zielzustand)
 
+Die App liegt im **Repository-Root** (neben den read-only `engine-*`-Ordnern):
+
 ```
-data-stewart-tool/
-├── CLAUDE.md               # Anleitung für Claude Code (dieses Projekt)
+<repo root>/
+├── README.md               # technische Dokumentation (Einstieg)
 ├── ZIELBILD.md             # dieses Dokument
+├── CLAUDE.md               # Anleitung für Claude Code
 ├── index.html              # App-Shell, lädt die SPA
 ├── css/
 │   └── styles.css          # schlankes, eigenes Stylesheet
 ├── js/
 │   ├── app.js              # Bootstrap + Hash-Router
 │   ├── storage.js          # Persistenzschicht (localStorage; später PHP-API)
-│   ├── models.js           # Fabriken/Helfer für KM & Projekt, ID-Erzeugung, Baum-Traversal
+│   ├── models.js           # Fabriken/Helfer für KM & Projekt, IDs, Baum-Traversal, Fortschritt
+│   ├── util.js             # kleine Helfer (HTML-Escaping etc.)
 │   └── pages/
 │       ├── kmList.js
 │       ├── kmEditor.js
 │       ├── projectList.js
 │       ├── questionnaire.js
 │       └── document.js
-└── data/
-    └── sample-km.json      # Beispiel-Wissensmodell zum Ausprobieren (Seed)
+├── data/
+│   └── sample-km.json      # Beispiel-Wissensmodell (Seed beim ersten Start)
+├── .github/workflows/
+│   └── static.yml          # GitHub-Pages-Deployment (Push auf main)
+├── engine-backend-develop/   # Original-DSW (Haskell) — read-only Referenz
+└── engine-frontend-develop/  # Original-DSW (Elm) — read-only Referenz
 ```
 
 ---
