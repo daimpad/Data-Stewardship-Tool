@@ -3,7 +3,7 @@
 
 import * as storage from '../storage.js';
 import * as M from '../models.js';
-import { esc } from '../util.js';
+import { esc, slug, downloadJson } from '../util.js';
 
 function countQuestions(km) {
   let n = 0;
@@ -17,23 +17,6 @@ function isValidKM(d) {
     && typeof d.title === 'string'
     && Array.isArray(d.chapters)
     && d.chapters.every((ch) => ch && typeof ch.title === 'string' && Array.isArray(ch.questions));
-}
-
-function slug(s) {
-  return (s || 'wissensmodell').toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'wissensmodell';
-}
-
-function downloadJson(filename, obj) {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 export function render(container) {
