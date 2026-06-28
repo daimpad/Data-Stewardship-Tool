@@ -1,0 +1,261 @@
+{
+  "id": "tmpl_science_europe",
+  "title": "Science Europe DMP (international)",
+  "description": "Datenmanagementplan nach den sechs Kernthemen des Science-Europe-Leitfadens — Basis u. a. für Horizon-Europe-DMPs.",
+  "createdAt": "2026-06-28T00:00:00.000Z",
+  "chapters": [
+    {
+      "id": "se_ch1",
+      "title": "1. Datenbeschreibung & Datenerhebung",
+      "text": "Art, Herkunft, Format und Umfang der Daten.",
+      "questions": [
+        {
+          "id": "se_reuse",
+          "type": "options",
+          "title": "Werden Daten neu erzeugt oder bestehende Daten nachgenutzt?",
+          "text": "",
+          "required": true,
+          "answers": [
+            { "id": "se_reuse_new", "label": "Neu erzeugt", "advice": "", "followUps": [] },
+            { "id": "se_reuse_existing", "label": "Bestehende nachgenutzt", "advice": "", "followUps": [
+              { "id": "se_reuse_src", "type": "value", "title": "Quelle und Lizenz der nachgenutzten Daten?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "se_reuse_both", "label": "Beides", "advice": "", "followUps": [] }
+          ]
+        },
+        {
+          "id": "se_types",
+          "type": "list",
+          "title": "Welche Datentypen und -formate entstehen?",
+          "text": "Pro Datentyp einen Eintrag anlegen.",
+          "itemTemplate": [
+            { "id": "se_type_name", "type": "value", "title": "Datentyp / Format", "text": "", "valueType": "string" },
+            { "id": "se_type_vol", "type": "value", "title": "Geschätztes Volumen (GB)", "text": "", "valueType": "number", "validations": [ { "type": "min", "value": 0 } ] }
+          ]
+        },
+        {
+          "id": "se_collect",
+          "type": "value",
+          "title": "Mit welchen Methoden/Instrumenten werden die Daten erhoben?",
+          "text": "",
+          "valueType": "string"
+        }
+      ]
+    },
+    {
+      "id": "se_ch2",
+      "title": "2. Dokumentation & Datenqualität",
+      "text": "Metadaten, Standards und Qualitätssicherung.",
+      "questions": [
+        {
+          "id": "se_meta",
+          "type": "multiChoice",
+          "title": "Welche Metadaten-Standards werden verwendet?",
+          "text": "Mehrfachauswahl möglich.",
+          "choices": [
+            { "id": "se_meta_datacite", "label": "DataCite" },
+            { "id": "se_meta_dc", "label": "Dublin Core" },
+            { "id": "se_meta_disc", "label": "Disziplinspezifischer Standard" },
+            { "id": "se_meta_none", "label": "Keiner" }
+          ]
+        },
+        {
+          "id": "se_doc",
+          "type": "options",
+          "title": "Werden die Daten dokumentiert (z. B. README, Codebook)?",
+          "text": "",
+          "answers": [
+            { "id": "se_doc_yes", "label": "Ja", "advice": "", "followUps": [
+              { "id": "se_doc_how", "type": "value", "title": "Wie wird dokumentiert?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "se_doc_no", "label": "Nein", "advice": "Dokumentation ist Voraussetzung für Nachnutzbarkeit.", "followUps": [] }
+          ]
+        },
+        {
+          "id": "se_quality",
+          "type": "options",
+          "title": "Gibt es Maßnahmen zur Qualitätssicherung?",
+          "text": "",
+          "answers": [
+            { "id": "se_q_yes", "label": "Ja", "advice": "", "followUps": [
+              { "id": "se_q_which", "type": "value", "title": "Welche?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "se_q_no", "label": "Nein", "advice": "", "followUps": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se_ch3",
+      "title": "3. Speicherung & Sicherung während des Projekts",
+      "text": "Wo und wie Daten während der Laufzeit gehalten werden.",
+      "questions": [
+        {
+          "id": "se_store",
+          "type": "multiChoice",
+          "title": "Wo werden die Daten während des Projekts gespeichert?",
+          "text": "",
+          "choices": [
+            { "id": "se_store_inst", "label": "Institutsserver" },
+            { "id": "se_store_cloud", "label": "Cloud-Dienst" },
+            { "id": "se_store_hpc", "label": "HPC / Rechenzentrum" },
+            { "id": "se_store_local", "label": "Lokale Geräte" }
+          ]
+        },
+        {
+          "id": "se_backup",
+          "type": "options",
+          "title": "Werden regelmäßige Backups erstellt?",
+          "text": "",
+          "answers": [
+            { "id": "se_backup_yes", "label": "Ja", "advice": "", "followUps": [
+              { "id": "se_backup_strat", "type": "value", "title": "Backup-Intervall und -Strategie?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "se_backup_no", "label": "Nein", "advice": "Ohne Backup besteht Verlustrisiko.", "followUps": [] }
+          ]
+        },
+        {
+          "id": "se_access",
+          "type": "value",
+          "title": "Wer hat während des Projekts Zugriff auf die Daten?",
+          "text": "",
+          "valueType": "string"
+        }
+      ]
+    },
+    {
+      "id": "se_ch4",
+      "title": "4. Rechtliche & ethische Anforderungen",
+      "text": "Datenschutz, Urheberrecht, Ethik und Lizenzierung.",
+      "questions": [
+        {
+          "id": "se_personal",
+          "type": "options",
+          "title": "Werden personenbezogene Daten verarbeitet?",
+          "text": "",
+          "required": true,
+          "answers": [
+            { "id": "se_pers_yes", "label": "Ja", "advice": "DSGVO beachten; Einwilligungen und Rechtsgrundlage klären.", "followUps": [
+              { "id": "se_pers_legal", "type": "value", "title": "Auf welcher Rechtsgrundlage (DSGVO)?", "text": "", "valueType": "string" },
+              { "id": "se_pers_anon", "type": "options", "title": "Werden die Daten anonymisiert oder pseudonymisiert?", "text": "", "answers": [
+                { "id": "se_anon_a", "label": "Anonymisiert", "advice": "", "followUps": [] },
+                { "id": "se_anon_p", "label": "Pseudonymisiert", "advice": "", "followUps": [] },
+                { "id": "se_anon_n", "label": "Keines", "advice": "", "followUps": [] }
+              ] }
+            ] },
+            { "id": "se_pers_no", "label": "Nein", "advice": "", "followUps": [] }
+          ]
+        },
+        {
+          "id": "se_ip",
+          "type": "options",
+          "title": "Bestehen Urheber- oder Eigentumsrechte Dritter an den Daten?",
+          "text": "",
+          "answers": [
+            { "id": "se_ip_yes", "label": "Ja", "advice": "", "followUps": [
+              { "id": "se_ip_which", "type": "value", "title": "Welche und wie werden sie berücksichtigt?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "se_ip_no", "label": "Nein", "advice": "", "followUps": [] },
+            { "id": "se_ip_unclear", "label": "Unklar", "advice": "Vor Veröffentlichung klären.", "followUps": [] }
+          ]
+        },
+        {
+          "id": "se_license",
+          "type": "value",
+          "title": "Unter welcher Lizenz werden die Daten veröffentlicht?",
+          "text": "z. B. CC-BY-4.0, CC0",
+          "valueType": "string"
+        },
+        {
+          "id": "se_ethics",
+          "type": "options",
+          "title": "Liegt ein Ethikvotum vor bzw. ist eines erforderlich?",
+          "text": "",
+          "answers": [
+            { "id": "se_eth_yes", "label": "Liegt vor", "advice": "", "followUps": [] },
+            { "id": "se_eth_need", "label": "Erforderlich, noch ausstehend", "advice": "", "followUps": [] },
+            { "id": "se_eth_no", "label": "Nicht erforderlich", "advice": "", "followUps": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se_ch5",
+      "title": "5. Datenaustausch & Langzeitarchivierung",
+      "text": "Veröffentlichung, Repositorien, Identifier und Aufbewahrung.",
+      "questions": [
+        {
+          "id": "se_share",
+          "type": "options",
+          "title": "Werden die Daten geteilt bzw. veröffentlicht?",
+          "text": "",
+          "required": true,
+          "answers": [
+            { "id": "se_share_yes", "label": "Ja", "advice": "", "followUps": [
+              { "id": "se_share_repo", "type": "value", "title": "In welchem Repositorium?", "text": "z. B. Zenodo, fachspezifisches Repositorium", "valueType": "string" }
+            ] },
+            { "id": "se_share_part", "label": "Teilweise", "advice": "", "followUps": [
+              { "id": "se_share_part_why", "type": "value", "title": "Welche Teile werden nicht geteilt und warum?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "se_share_no", "label": "Nein", "advice": "", "followUps": [
+              { "id": "se_share_no_why", "type": "value", "title": "Begründung (rechtlich/ethisch/kommerziell)?", "text": "", "valueType": "string" }
+            ] }
+          ]
+        },
+        {
+          "id": "se_pid",
+          "type": "options",
+          "title": "Wird ein persistenter Identifier (z. B. DOI) vergeben?",
+          "text": "",
+          "answers": [
+            { "id": "se_pid_yes", "label": "Ja", "advice": "", "followUps": [] },
+            { "id": "se_pid_no", "label": "Nein", "advice": "", "followUps": [] }
+          ]
+        },
+        {
+          "id": "se_retention",
+          "type": "value",
+          "title": "Geplante Aufbewahrungsdauer (Jahre)",
+          "text": "",
+          "valueType": "number",
+          "validations": [ { "type": "min", "value": 0 } ]
+        }
+      ]
+    },
+    {
+      "id": "se_ch6",
+      "title": "6. Verantwortlichkeiten & Ressourcen",
+      "text": "Zuständigkeiten und eingeplante Mittel.",
+      "questions": [
+        {
+          "id": "se_resp",
+          "type": "value",
+          "title": "Wer ist für das Datenmanagement verantwortlich?",
+          "text": "",
+          "required": true,
+          "valueType": "string",
+          "validations": [ { "type": "minLength", "value": 2 } ]
+        },
+        {
+          "id": "se_contact",
+          "type": "value",
+          "title": "Kontakt-E-Mail der verantwortlichen Person",
+          "text": "",
+          "valueType": "email"
+        },
+        {
+          "id": "se_resources",
+          "type": "options",
+          "title": "Sind Ressourcen/Kosten für das Datenmanagement eingeplant?",
+          "text": "",
+          "answers": [
+            { "id": "se_res_yes", "label": "Ja", "advice": "", "followUps": [
+              { "id": "se_res_which", "type": "value", "title": "Welche Kosten (z. B. Speicher, Personal, Gebühren)?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "se_res_no", "label": "Nein", "advice": "", "followUps": [] }
+          ]
+        }
+      ]
+    }
+  ]
+}

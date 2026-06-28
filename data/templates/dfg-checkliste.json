@@ -1,0 +1,140 @@
+{
+  "id": "tmpl_dfg",
+  "title": "DFG-Checkliste „Umgang mit Forschungsdaten\"",
+  "description": "Kompakte Vorlage angelehnt an die DFG-Checkliste zum Umgang mit Forschungsdaten in Förderanträgen.",
+  "createdAt": "2026-06-28T00:00:00.000Z",
+  "chapters": [
+    {
+      "id": "dfg_ch1",
+      "title": "1. Datenbeschreibung",
+      "text": "Art, Umfang und Herkunft der Forschungsdaten.",
+      "questions": [
+        {
+          "id": "dfg_kind",
+          "type": "value",
+          "title": "Welche Art von Daten entsteht (Typ, Format, geschätzter Umfang)?",
+          "text": "",
+          "required": true,
+          "valueType": "string",
+          "validations": [ { "type": "minLength", "value": 3 } ]
+        },
+        {
+          "id": "dfg_reuse",
+          "type": "options",
+          "title": "Werden bereits vorhandene Daten nachgenutzt?",
+          "text": "",
+          "answers": [
+            { "id": "dfg_reuse_yes", "label": "Ja", "advice": "", "followUps": [
+              { "id": "dfg_reuse_src", "type": "value", "title": "Welche Quellen und unter welchen Bedingungen?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "dfg_reuse_no", "label": "Nein", "advice": "", "followUps": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dfg_ch2",
+      "title": "2. Dokumentation & Standards",
+      "text": "Metadaten und anerkannte Standards der Fachdisziplin.",
+      "questions": [
+        {
+          "id": "dfg_std",
+          "type": "options",
+          "title": "Werden anerkannte Standards/Metadaten der Fachdisziplin genutzt?",
+          "text": "",
+          "answers": [
+            { "id": "dfg_std_yes", "label": "Ja", "advice": "", "followUps": [
+              { "id": "dfg_std_which", "type": "value", "title": "Welche Standards?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "dfg_std_part", "label": "Teilweise", "advice": "", "followUps": [] },
+            { "id": "dfg_std_no", "label": "Nein", "advice": "", "followUps": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dfg_ch3",
+      "title": "3. Rechtliche Aspekte",
+      "text": "Datenschutz, Persönlichkeitsrechte und Nutzungsrechte.",
+      "questions": [
+        {
+          "id": "dfg_privacy",
+          "type": "options",
+          "title": "Sind Datenschutz- oder Persönlichkeitsrechte betroffen?",
+          "text": "",
+          "required": true,
+          "answers": [
+            { "id": "dfg_priv_yes", "label": "Ja", "advice": "DSGVO und ggf. Einwilligungen berücksichtigen.", "followUps": [
+              { "id": "dfg_priv_how", "type": "value", "title": "Wie wird damit umgegangen?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "dfg_priv_no", "label": "Nein", "advice": "", "followUps": [] }
+          ]
+        },
+        {
+          "id": "dfg_license",
+          "type": "value",
+          "title": "Welche Lizenz bzw. Nutzungsbedingungen sind vorgesehen?",
+          "text": "z. B. CC-BY-4.0",
+          "valueType": "string"
+        }
+      ]
+    },
+    {
+      "id": "dfg_ch4",
+      "title": "4. Speicherung & Archivierung",
+      "text": "Langfristige Sicherung und Aufbewahrung.",
+      "questions": [
+        {
+          "id": "dfg_archive",
+          "type": "options",
+          "title": "Ist die langfristige Sicherung/Archivierung geklärt?",
+          "text": "",
+          "answers": [
+            { "id": "dfg_arch_yes", "label": "Ja", "advice": "", "followUps": [
+              { "id": "dfg_arch_where", "type": "value", "title": "Wo und wie wird archiviert?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "dfg_arch_no", "label": "Nein", "advice": "", "followUps": [] }
+          ]
+        },
+        {
+          "id": "dfg_retention",
+          "type": "value",
+          "title": "Geplante Aufbewahrungsdauer (Jahre)",
+          "text": "Empfehlung: mindestens 10 Jahre.",
+          "valueType": "number",
+          "validations": [ { "type": "min", "value": 0 } ]
+        }
+      ]
+    },
+    {
+      "id": "dfg_ch5",
+      "title": "5. Verfügbarkeit & Nachnutzung",
+      "text": "Bereitstellung der Daten für Dritte.",
+      "questions": [
+        {
+          "id": "dfg_avail",
+          "type": "options",
+          "title": "Werden die Daten Dritten zur Verfügung gestellt?",
+          "text": "",
+          "required": true,
+          "answers": [
+            { "id": "dfg_avail_yes", "label": "Ja", "advice": "", "followUps": [
+              { "id": "dfg_avail_cond", "type": "value", "title": "Über welches Repositorium und unter welchen Bedingungen?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "dfg_avail_restr", "label": "Eingeschränkt", "advice": "", "followUps": [
+              { "id": "dfg_avail_why", "type": "value", "title": "Welche Einschränkungen und warum?", "text": "", "valueType": "string" }
+            ] },
+            { "id": "dfg_avail_no", "label": "Nein", "advice": "", "followUps": [] }
+          ]
+        },
+        {
+          "id": "dfg_contact",
+          "type": "value",
+          "title": "Verantwortliche Person / Kontakt (E-Mail)",
+          "text": "",
+          "valueType": "email"
+        }
+      ]
+    }
+  ]
+}

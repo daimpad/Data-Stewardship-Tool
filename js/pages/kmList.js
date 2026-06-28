@@ -3,6 +3,7 @@
 
 import * as storage from '../storage.js';
 import * as M from '../models.js';
+import { TEMPLATES } from '../templates.js';
 import { esc, slug, downloadJson } from '../util.js';
 
 function countQuestions(km) {
@@ -52,13 +53,29 @@ export function render(container) {
             </div>
           </li>`).join('')}
       </ul>
+
+      <h2 class="tmpl-head">Vorlagen</h2>
+      <p class="muted">Fertige, an etablierten DMP-Vorgaben orientierte Wissensmodelle.
+        „Übernehmen" legt eine bearbeitbare Kopie in deinen Modellen an.</p>
+      <ul class="cards">
+        ${TEMPLATES.map((t) => `
+          <li class="card">
+            <div class="card-body">
+              <h3>${esc(t.title)}</h3>
+              <p class="muted">${esc(t.description)}</p>
+            </div>
+            <div class="card-actions">
+              <button type="button" class="btn-sm" data-action="add-template" data-id="${esc(t.id)}">Übernehmen</button>
+            </div>
+          </li>`).join('')}
+      </ul>
     </div>
   `;
 
   const root = container.querySelector('#km-root');
   const importInput = container.querySelector('#km-import-input');
 
-  root.addEventListener('click', (e) => {
+  root.addEventListener('click', async (e) => {
     const action = e.target.dataset.action;
     if (!action) return;
     const id = e.target.dataset.id;
@@ -66,6 +83,20 @@ export function render(container) {
     if (action === 'new') {
       const km = storage.saveKM(M.newKM());
       location.hash = `#/km/${km.id}/edit`;
+    } else if (action === 'add-template') {
+      const t = TEMPLATES.find((x) => x.id === id);
+      if (!t) return;
+      try {
+        const res = await fetch(t.file);
+        if (!res.ok) throw new Error('Datei nicht gefunden');
+        const km = await res.json();
+        km.id = M.uid('km'); // fresh id so it lands as a new, editable copy
+        km.createdAt = new Date().toISOString();
+        storage.saveKM(km);
+        location.hash = `#/km/${km.id}/edit`;
+      } catch (err) {
+        alert(`Vorlage konnte nicht geladen werden: ${err.message}`);
+      }
     } else if (action === 'import') {
       importInput.click();
     } else if (action === 'export') {
