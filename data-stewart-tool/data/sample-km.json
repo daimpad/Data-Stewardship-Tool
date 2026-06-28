@@ -1,0 +1,83 @@
+{
+  "id": "km_sample",
+  "title": "Einfacher Datenmanagementplan (Beispiel)",
+  "description": "Ein kompaktes Beispiel-Wissensmodell, das alle vier Fragetypen demonstriert.",
+  "createdAt": "2026-06-28T00:00:00.000Z",
+  "chapters": [
+    {
+      "id": "ch_general",
+      "title": "1. Allgemeine Angaben",
+      "text": "Grundlegende Informationen zum Forschungsprojekt.",
+      "questions": [
+        { "id": "q_title", "type": "value", "title": "Wie lautet der Projekttitel?", "text": "", "valueType": "string" },
+        { "id": "q_email", "type": "value", "title": "Kontakt-E-Mail der datenverantwortlichen Person", "text": "", "valueType": "email" },
+        { "id": "q_start", "type": "value", "title": "Geplanter Projektbeginn", "text": "", "valueType": "date" }
+      ]
+    },
+    {
+      "id": "ch_data",
+      "title": "2. Daten",
+      "text": "Art, Speicherung und Veröffentlichung der Daten.",
+      "questions": [
+        {
+          "id": "q_personal",
+          "type": "options",
+          "title": "Werden personenbezogene Daten erhoben?",
+          "text": "",
+          "answers": [
+            {
+              "id": "a_yes",
+              "label": "Ja",
+              "advice": "Beachten Sie die DSGVO und holen Sie, wo nötig, Einwilligungen ein.",
+              "followUps": [
+                { "id": "q_legal", "type": "value", "title": "Auf welcher Rechtsgrundlage werden sie verarbeitet?", "text": "", "valueType": "string" },
+                {
+                  "id": "q_anon",
+                  "type": "options",
+                  "title": "Werden die Daten anonymisiert oder pseudonymisiert?",
+                  "text": "",
+                  "answers": [
+                    { "id": "a_anon_yes", "label": "Ja", "advice": "", "followUps": [] },
+                    { "id": "a_anon_no", "label": "Nein", "advice": "", "followUps": [] }
+                  ]
+                }
+              ]
+            },
+            { "id": "a_no", "label": "Nein", "advice": "", "followUps": [] }
+          ]
+        },
+        {
+          "id": "q_storage",
+          "type": "multiChoice",
+          "title": "Wo werden die Daten gespeichert?",
+          "text": "Mehrfachauswahl möglich.",
+          "choices": [
+            { "id": "c_local", "label": "Lokaler Institutsserver" },
+            { "id": "c_cloud", "label": "Cloud-Speicher" },
+            { "id": "c_repo", "label": "Forschungsrepositorium" }
+          ]
+        },
+        {
+          "id": "q_datasets",
+          "type": "list",
+          "title": "Welche Datensätze entstehen?",
+          "text": "Fügen Sie pro Datensatz einen Eintrag hinzu.",
+          "itemTemplate": [
+            { "id": "q_ds_name", "type": "value", "title": "Name des Datensatzes", "text": "", "valueType": "string" },
+            { "id": "q_ds_format", "type": "value", "title": "Dateiformat", "text": "", "valueType": "string" },
+            {
+              "id": "q_ds_open",
+              "type": "options",
+              "title": "Wird der Datensatz Open Access veröffentlicht?",
+              "text": "",
+              "answers": [
+                { "id": "a_open_yes", "label": "Ja", "advice": "", "followUps": [] },
+                { "id": "a_open_no", "label": "Nein", "advice": "", "followUps": [] }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
