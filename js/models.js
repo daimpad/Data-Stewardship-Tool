@@ -36,6 +36,10 @@ export function newChoice() {
   return { id: uid('c'), label: 'Option' };
 }
 
+export function newReference() {
+  return { label: '', url: '' };
+}
+
 export function newProject(kmId, name) {
   return {
     id: uid('prj'),
@@ -60,6 +64,7 @@ export function duplicateProject(p) {
 export function applyTypeDefaults(q, type) {
   const next = { id: q.id, type, title: q.title, text: q.text };
   if (q.required) next.required = true; // type-independent, preserve across type changes
+  if (q.references) next.references = q.references;
   if (type === 'value') {
     next.valueType = q.valueType || 'string';
     next.validations = q.validations || [];

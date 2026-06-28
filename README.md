@@ -64,6 +64,10 @@ Browser und behält dabei die konzeptuelle Struktur bei.
 - **Vorlagen** — mitgelieferte, an etablierten DMP-Vorgaben orientierte
   Wissensmodelle (**Science Europe / Horizon Europe**, **DFG-Checkliste**); per
   „Übernehmen" als bearbeitbare Kopie in die eigene Bibliothek laden.
+- **Referenzen & Leitfaden** — je Frage Hilfe-Links (z. B. DSGVO, FAIR,
+  Repositorien) und **Markdown-Hilfetexte**; im Fragebogen und im Dokument als
+  Links dargestellt. Markdown wird sicher gerendert (Escaping zuerst, nur
+  erlaubte Link-Schemata).
 - **Beispiel-Wissensmodell** wird beim ersten Start automatisch geladen.
 
 ## Schnellstart
@@ -156,6 +160,10 @@ Vier der sieben DSW-Fragetypen sind abgebildet:
 `minLength`, `maxLength`, `pattern`, `min`, `max`); zusätzlich wird je `valueType`
 das Format geprüft (Zahl/E-Mail/URL). Im Fragebogen werden ungültige Eingaben
 markiert und zählen nicht als beantwortet.
+
+Jede Frage kann **Referenzen** (`references: [{ label, url }]`, Hilfe-Links) tragen;
+Hilfetexte, Hinweise und Kapitelbeschreibungen werden als sicheres Markdown
+(fett, kursiv, Code, Links) gerendert.
 
 ## Routing
 

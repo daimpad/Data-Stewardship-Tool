@@ -2,7 +2,7 @@
 // Browser print (Ctrl/Cmd+P) → "Save as PDF" is the export path.
 
 import * as storage from '../storage.js';
-import { esc, notFound } from '../util.js';
+import { esc, md, referencesHtml, notFound } from '../util.js';
 
 const unanswered = '<span class="muted">— nicht beantwortet —</span>';
 
@@ -48,6 +48,7 @@ export function render(container, params) {
       }
     }
 
+    out += referencesHtml(q.references);
     return `${out}</div>`;
   }
 
@@ -62,7 +63,7 @@ export function render(container, params) {
       ${km.chapters.map((ch) => `
         <section>
           <h2>${esc(ch.title)}</h2>
-          ${ch.text ? `<p>${esc(ch.text)}</p>` : ''}
+          ${ch.text ? `<p>${md(ch.text)}</p>` : ''}
           ${ch.questions.map((q) => renderAnswer(q, q.id)).join('')}
         </section>`).join('')}
     </article>

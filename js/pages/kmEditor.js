@@ -50,6 +50,10 @@ export function render(container, params) {
       const q = M.findQuestion(km, e.target.dataset.qid);
       const i = Number(e.target.dataset.idx);
       if (q && q.validations && q.validations[i]) q.validations[i].value = v;
+    } else if (f === 'r-label' || f === 'r-url') {
+      const q = M.findQuestion(km, e.target.dataset.qid);
+      const i = Number(e.target.dataset.idx);
+      if (q && q.references && q.references[i]) q.references[i][f === 'r-label' ? 'label' : 'url'] = v;
     } else return;
     save();
   });
@@ -124,6 +128,13 @@ export function render(container, params) {
       const q = M.findQuestion(km, e.target.dataset.qid);
       const i = Number(e.target.dataset.idx);
       if (q && q.validations) q.validations.splice(i, 1);
+    } else if (action === 'add-reference') {
+      const q = M.findQuestion(km, id);
+      if (q) (q.references ||= []).push(M.newReference());
+    } else if (action === 'del-reference') {
+      const q = M.findQuestion(km, e.target.dataset.qid);
+      const i = Number(e.target.dataset.idx);
+      if (q && q.references) q.references.splice(i, 1);
     } else {
       return;
     }
@@ -187,9 +198,23 @@ function viewQuestion(q, idx, total) {
           <button type="button" class="btn-sm danger" data-action="del-question" data-id="${esc(q.id)}">✕</button>
         </span>
       </div>
-      <input class="ed-help" data-field="q-text" data-id="${esc(q.id)}" value="${esc(q.text || '')}" placeholder="Hilfetext (optional)">
+      <input class="ed-help" data-field="q-text" data-id="${esc(q.id)}" value="${esc(q.text || '')}" placeholder="Hilfetext (optional, Markdown erlaubt)">
       ${viewQuestionBody(q)}
+      ${viewReferences(q)}
     </div>`;
+}
+
+function viewReferences(q) {
+  return `<div class="ed-references">
+    <p class="muted small">Referenzen (Hilfe-Links):</p>
+    ${(q.references || []).map((r, i) => `
+      <div class="ed-reference">
+        <input data-field="r-label" data-qid="${esc(q.id)}" data-idx="${i}" value="${esc(r.label)}" placeholder="Bezeichnung">
+        <input data-field="r-url" data-qid="${esc(q.id)}" data-idx="${i}" value="${esc(r.url)}" placeholder="https://…">
+        <button type="button" class="btn-sm danger" data-action="del-reference" data-qid="${esc(q.id)}" data-idx="${i}">✕</button>
+      </div>`).join('')}
+    <button type="button" class="btn-sm" data-action="add-reference" data-id="${esc(q.id)}">+ Referenz</button>
+  </div>`;
 }
 
 function viewValidation(v, qId, idx) {

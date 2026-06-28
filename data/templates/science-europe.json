@@ -7,7 +7,7 @@
     {
       "id": "se_ch1",
       "title": "1. Datenbeschreibung & Datenerhebung",
-      "text": "Art, Herkunft, Format und Umfang der Daten.",
+      "text": "Art, Herkunft, Format und Umfang der Daten. Grundlage: [Science Europe – Practical Guide](https://www.scienceeurope.org/our-resources/practical-guide-to-the-international-alignment-of-research-data-management/).",
       "questions": [
         {
           "id": "se_reuse",
@@ -51,7 +51,7 @@
           "id": "se_meta",
           "type": "multiChoice",
           "title": "Welche Metadaten-Standards werden verwendet?",
-          "text": "Mehrfachauswahl möglich.",
+          "text": "Orientierung an den [FAIR-Prinzipien](https://www.go-fair.org/fair-principles/). Mehrfachauswahl möglich.",
           "choices": [
             { "id": "se_meta_datacite", "label": "DataCite" },
             { "id": "se_meta_dc", "label": "Dublin Core" },
@@ -134,6 +134,7 @@
           "title": "Werden personenbezogene Daten verarbeitet?",
           "text": "",
           "required": true,
+          "references": [ { "label": "DSGVO (Volltext, EUR-Lex)", "url": "https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32016R0679" } ],
           "answers": [
             { "id": "se_pers_yes", "label": "Ja", "advice": "DSGVO beachten; Einwilligungen und Rechtsgrundlage klären.", "followUps": [
               { "id": "se_pers_legal", "type": "value", "title": "Auf welcher Rechtsgrundlage (DSGVO)?", "text": "", "valueType": "string" },
@@ -164,7 +165,11 @@
           "type": "value",
           "title": "Unter welcher Lizenz werden die Daten veröffentlicht?",
           "text": "z. B. CC-BY-4.0, CC0",
-          "valueType": "string"
+          "valueType": "string",
+          "references": [
+            { "label": "SPDX-Lizenzliste", "url": "https://spdx.org/licenses/" },
+            { "label": "Creative-Commons-Lizenzen", "url": "https://creativecommons.org/licenses/" }
+          ]
         },
         {
           "id": "se_ethics",
@@ -192,7 +197,7 @@
           "required": true,
           "answers": [
             { "id": "se_share_yes", "label": "Ja", "advice": "", "followUps": [
-              { "id": "se_share_repo", "type": "value", "title": "In welchem Repositorium?", "text": "z. B. Zenodo, fachspezifisches Repositorium", "valueType": "string" }
+              { "id": "se_share_repo", "type": "value", "title": "In welchem Repositorium?", "text": "z. B. Zenodo, fachspezifisches Repositorium", "valueType": "string", "references": [ { "label": "re3data – Repositorien finden", "url": "https://www.re3data.org/" }, { "label": "Zenodo", "url": "https://zenodo.org/" } ] }
             ] },
             { "id": "se_share_part", "label": "Teilweise", "advice": "", "followUps": [
               { "id": "se_share_part_why", "type": "value", "title": "Welche Teile werden nicht geteilt und warum?", "text": "", "valueType": "string" }

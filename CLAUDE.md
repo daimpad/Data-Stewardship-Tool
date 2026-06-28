@@ -57,6 +57,9 @@ PHP/MySQL backend (Stage 2) confined to that one file.
   (`minLength`/`maxLength`/`pattern`/`min`/`max`); `models.validateValue()` also
   checks number/email/url format by `valueType`. Any question may have
   `required: true`; `countProgress` returns `requiredTotal`/`requiredOpen`.
+  Any question may also have `references: [{ label, url }]` (help links).
+  Guidance text (question/chapter text, advice) is rendered via `util.md()` —
+  a tiny XSS-safe Markdown subset (escape first, safe link schemes only).
 - **Project**: `{ kmId, name, replies }` where `replies` is a map keyed by a
   dotted **path** of ids (e.g. `q_personal.a_yes.q_legal`).
 - **Reply types**: `value` (string), `answer` (answer id), `multiChoice` (array of

@@ -25,6 +25,7 @@
           "title": "Werden personenbezogene Daten erhoben?",
           "text": "",
           "required": true,
+          "references": [ { "label": "DSGVO (Volltext, EUR-Lex)", "url": "https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32016R0679" } ],
           "answers": [
             {
               "id": "a_yes",
